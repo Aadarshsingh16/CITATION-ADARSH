@@ -13,7 +13,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "llm:check": "tsx scripts/llm-check.ts",
-    "test": "tsx tests/quotes.test.ts && tsx tests/phase1-ingestion.test.ts"
+    "test": "tsx tests/stream-parser.test.ts && tsx tests/quotes.test.ts && tsx tests/phase1-ingestion.test.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
