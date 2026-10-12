@@ -8,6 +8,14 @@ export type Match = {
   end: number;   // offset in canonical text (exclusive)
 };
 
+export type QuoteMatch = Match;
+
+export type QuotePageBoundary = {
+  pageNumber: number;
+  startOffset: number;
+  endOffset: number;
+};
+
 export type VerifyReason =
   | "not_found"
   | "too_short"

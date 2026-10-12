@@ -366,6 +366,17 @@ export async function getDocument(documentId: string): Promise<DocumentRecord | 
 }
 
 /**
+ * Gets pages for a document, ordered by page number.
+ */
+export async function getDocumentPages(documentId: string) {
+  return db
+    .select()
+    .from(pages)
+    .where(eq(pages.documentId, documentId))
+    .orderBy(pages.pageNumber);
+}
+
+/**
  * Deletes a document and its cascading records.
  */
 export async function deleteDocument(documentId: string): Promise<boolean> {
