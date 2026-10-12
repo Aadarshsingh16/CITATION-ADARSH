@@ -1,0 +1,9 @@
+[
+  {
+    "id": "q-001",
+    "doc": "sample.pdf",
+    "question": "What is the governing law?",
+    "kind": "present",
+    "expect": ["governing law"]
+  }
+]
