@@ -22,6 +22,7 @@ export type RejectionReason =
 export interface PageItemMap {
   starts: number[];
   lens: number[];
+  itemIndices?: number[];
 }
 
 export interface DocumentRecord {

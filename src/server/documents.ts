@@ -394,3 +394,32 @@ export async function deleteDocument(documentId: string): Promise<boolean> {
   const res = await db.delete(documents).where(eq(documents.id, documentId)).returning();
   return res.length > 0;
 }
+
+/**
+ * Retrieves the raw file binary data, mime type, and filename for a document.
+ */
+export async function getDocumentFile(
+  documentId: string
+): Promise<{ data: Buffer; mime: string; filename: string } | null> {
+  const [doc] = await db
+    .select({ filename: documents.filename, mime: documents.mime })
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+
+  if (!doc) return null;
+
+  const [fileRow] = await db
+    .select({ data: documentFiles.data })
+    .from(documentFiles)
+    .where(eq(documentFiles.documentId, documentId))
+    .limit(1);
+
+  if (!fileRow || !fileRow.data) return null;
+
+  return {
+    data: Buffer.from(fileRow.data),
+    mime: doc.mime,
+    filename: doc.filename,
+  };
+}

@@ -107,14 +107,16 @@ export async function extractPdf(
       item: TextItemObj;
       x: number;
       y: number;
+      originalIndex: number;
     }
 
     const positionedItems: PositionedItem[] = [];
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
       if (typeof item.str !== "string") continue;
       const x = item.transform ? item.transform[4] : 0;
       const y = item.transform ? item.transform[5] : 0;
-      positionedItems.push({ item, x, y });
+      positionedItems.push({ item, x, y, originalIndex: idx });
     }
 
     // Sort items vertically top-to-bottom (PDF y is from bottom up, so descending y), then horizontally left-to-right (ascending x)
@@ -129,9 +131,10 @@ export async function extractPdf(
 
     let lastY: number | null = null;
     let lastRightX: number | null = null;
+    const itemIndices: number[] = [];
 
     for (let i = 0; i < positionedItems.length; i++) {
-      const { item, x, y } = positionedItems[i];
+      const { item, x, y, originalIndex } = positionedItems[i];
       if (!item.str) continue;
 
       if (lastY !== null) {
@@ -153,6 +156,7 @@ export async function extractPdf(
       const itemStart = pageText.length;
       starts.push(itemStart);
       lens.push(item.str.length);
+      itemIndices.push(originalIndex);
       pageText += item.str;
 
       lastY = y;
@@ -172,7 +176,7 @@ export async function extractPdf(
     pages.push({
       pageNumber: pageNum,
       text: pageText,
-      items: { starts, lens },
+      items: { starts, lens, itemIndices },
       isUnreadable,
     });
   }

@@ -9,6 +9,11 @@ import type { StoredQuote } from "@/server/chat";
 export default function Home() {
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [activeViewerDocId, setActiveViewerDocId] = useState<string | null>(null);
+  const [activeQuoteCitation, setActiveQuoteCitation] = useState<{
+    text: string;
+    documentId?: string;
+    quoteId?: string;
+  } | null>(null);
 
   const handleToggleSelect = (id: string, selected: boolean) => {
     setSelectedDocIds((prev) =>
@@ -18,10 +23,16 @@ export default function Home() {
 
   const handleOpenViewer = (id: string) => {
     setActiveViewerDocId(id || null);
+    setActiveQuoteCitation(null);
   };
 
   const handleOpenQuoteInViewer = (quote: StoredQuote) => {
     setActiveViewerDocId(quote.documentId);
+    setActiveQuoteCitation({
+      text: quote.text,
+      documentId: quote.documentId,
+      quoteId: quote.id,
+    });
   };
 
   const handleCompare = (idA: string, idB: string) => {
@@ -56,7 +67,12 @@ export default function Home() {
       {/* 3. Right: Collapsible Canonical Document Viewer */}
       <DocumentViewer
         documentId={activeViewerDocId}
-        onClose={() => setActiveViewerDocId(null)}
+        activeQuote={activeQuoteCitation}
+        onClose={() => {
+          setActiveViewerDocId(null);
+          setActiveQuoteCitation(null);
+        }}
+        onClearActiveQuote={() => setActiveQuoteCitation(null)}
       />
     </div>
   );

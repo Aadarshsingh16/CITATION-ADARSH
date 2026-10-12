@@ -45,6 +45,7 @@ export function buildCanonicalFromPdf(pages: PageExtraction[]): CanonicalDocumen
       items: {
         starts: adjustedStarts,
         lens: page.items.lens,
+        itemIndices: page.items.itemIndices,
       },
     });
   }
