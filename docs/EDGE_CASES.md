@@ -41,20 +41,20 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 ## Upload and ingestion
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Wrong extension (.txt, .png) | Rejected with specific message | P1 |
-| [ ] | Wrong content with right extension (.exe renamed .pdf) | Magic-byte check rejects it | P1 |
-| [ ] | Scanned PDF, no text | Rejected with `no_text_layer` and explanation, not listed as ready | P1 |
-| [ ] | PDF with some scanned pages | Accepted with warning, pages recorded as unreadable | P1 |
-| [ ] | Password-protected PDF | Rejected with `encrypted` | P1 |
-| [ ] | Corrupt file | Status failed with a readable reason and retry | P1 |
-| [ ] | Empty or tiny file | Rejected as having no usable text | P1 |
-| [ ] | Very large file or over page limit | Rejected with the limit stated | P1 |
-| [ ] | DOCX without real pages | Virtual sections, labelled "Section" | P1, P4 |
-| [ ] | DOCX with tables and lists | Text extracted in reading order, numbering preserved as text where available | P1 |
-| [ ] | Upload while another is processing | Both proceed, each with its own status | P1 |
-| [ ] | Browser closed during processing | Status recoverable on reload. Resumable jobs are an extra | P1 |
-| [ ] | Delete a document used in chats | Chats for that doc are removed, multi-doc chats show the doc as deleted | P1, P5 |
-| [ ] | Same file uploaded twice | Allowed, listed separately (or flagged as duplicate by hash, owner decision) | P1 |
+| [x] | Wrong extension (.txt, .png) | Rejected with specific message | P1 |
+| [x] | Wrong content with right extension (.exe renamed .pdf) | Magic-byte check rejects it | P1 |
+| [x] | Scanned PDF, no text | Rejected with `no_text_layer` and explanation, not listed as ready | P1 |
+| [x] | PDF with some scanned pages | Accepted with warning, pages recorded as unreadable | P1 |
+| [x] | Password-protected PDF | Rejected with `encrypted` | P1 |
+| [x] | Corrupt file | Status failed with a readable reason and retry | P1 |
+| [x] | Empty or tiny file | Rejected as having no usable text | P1 |
+| [x] | Very large file or over page limit | Rejected with the limit stated | P1 |
+| [x] | DOCX without real pages | Virtual sections, labelled "Section" | P1, P4 |
+| [x] | DOCX with tables and lists | Text extracted in reading order, numbering preserved as text where available | P1 |
+| [x] | Upload while another is processing | Both proceed, each with its own status | P1 |
+| [x] | Browser closed during processing | Status recoverable on reload. Resumable jobs are an extra | P1 |
+| [x] | Delete a document used in chats | Chats for that doc are removed, multi-doc chats show the doc as deleted | P1, P5 |
+| [x] | Same file uploaded twice | Allowed, listed separately (or flagged as duplicate by hash, owner decision) | P1 |
 
 ## Multi-document
 | Done | Case | Expected behaviour | Phase |
