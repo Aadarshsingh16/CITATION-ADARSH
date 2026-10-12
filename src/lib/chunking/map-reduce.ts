@@ -5,7 +5,7 @@
  */
 
 import { verifyQuote, type Match } from "../quotes";
-import { completeChat, streamChatCompletion, type ChatMessage } from "../llm/client";
+import { completeChat, streamChatCompletion, getLLMConfig, type ChatMessage } from "../llm/client";
 import type { ChunkRecord, Coverage } from "../types";
 import type { DocumentWithChunks } from "./retrieval";
 
@@ -202,11 +202,13 @@ export async function executeMapPhase(
       attempts++;
       try {
         const { system, user } = buildMapPrompt(question, batch);
+        const config = getLLMConfig();
         const res = await completeChat({
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
           ],
+          model: config.fastModel,
           signal,
           temperature: 0,
           maxTokens: 1024,

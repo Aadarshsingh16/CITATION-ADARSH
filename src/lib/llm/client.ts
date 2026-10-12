@@ -10,6 +10,7 @@ export interface LLMConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  fastModel: string;
   contextBudget: number;
 }
 
@@ -30,9 +31,10 @@ export function getLLMConfig(): LLMConfig {
   const baseUrl = process.env.LLM_BASE_URL || "";
   const apiKey = process.env.LLM_API_KEY || "";
   const model = process.env.LLM_MODEL || "";
+  const fastModel = process.env.LLM_FAST_MODEL || model;
   const contextBudget = parseInt(process.env.LLM_CONTEXT_BUDGET || "60000", 10);
 
-  return { baseUrl, apiKey, model, contextBudget };
+  return { baseUrl, apiKey, model, fastModel, contextBudget };
 }
 
 function ensureConfigured(config: LLMConfig): void {
@@ -45,6 +47,18 @@ function ensureConfigured(config: LLMConfig): void {
   if (!config.model) {
     throw new Error("LLM_MODEL is not set in environment.");
   }
+}
+
+/**
+ * Builds request headers with OpenRouter performance and prioritization metadata.
+ */
+function buildRequestHeaders(apiKey: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+    "HTTP-Referer": "https://contract-analyser.local",
+    "X-Title": "Contract Analyser",
+  };
 }
 
 /**
@@ -62,10 +76,7 @@ export async function* streamChatCompletion(
 
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers: buildRequestHeaders(config.apiKey),
     signal: options.signal,
     body: JSON.stringify({
       model,
@@ -161,10 +172,7 @@ export async function completeChat(
 
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers: buildRequestHeaders(config.apiKey),
     signal: options.signal,
     body: JSON.stringify({
       model,

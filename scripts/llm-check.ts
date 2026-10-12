@@ -34,6 +34,8 @@ async function testModel(baseUrl: string, apiKey: string, model: string): Promis
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
+    "HTTP-Referer": "https://contract-analyser.local",
+    "X-Title": "Contract Analyser",
   };
 
   const result: ModelCheckResult = {
