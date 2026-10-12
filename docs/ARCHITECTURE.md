@@ -17,14 +17,15 @@
 ## Stack
 Next.js (App Router, TypeScript, Tailwind), Node runtime. Postgres with Drizzle ORM.
 OpenAI-compatible LLM client configured only by `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
-Deploy target: Railway or Render (long streaming and processing jobs). See DECISIONS.md.
+Deploy target: Render (long streaming and processing jobs). See DECISIONS.md.
 
 ## Data model
 ```
 documents(id, filename, mime, size_bytes, status, status_detail, reject_reason, page_count,
-          char_count, text, file_ref, unreadable_pages int[], created_at)
+          char_count, text, sha256, unreadable_pages int[], created_at)
   status: uploading | extracting | indexing | ready | rejected | failed
-pages(document_id, page_number, start_offset, end_offset)       -- DOCX uses virtual sections
+document_files(id, document_id, data bytea, created_at)
+pages(id, document_id, page_number, start_offset, end_offset, items jsonb)   -- DOCX uses virtual sections
 chunks(id, document_id, ordinal, start_offset, end_offset, heading, clause_ref, token_est)
 chats(id, scope[single|multi], title, created_at)
 chat_documents(chat_id, document_id)

@@ -1,93 +1,101 @@
-# Deployment Guide (Railway)
+# Deployment Guide (Render)
 
-This guide provides the exact manual steps to deploy the application on Railway as a long-running Node service with managed PostgreSQL (decision D-003).
+This guide provides the exact manual steps to deploy the application on [Render](https://render.com/) as a long-running Node Web Service with managed PostgreSQL (decision D-003).
 
 ---
 
 ## Prerequisites
 
-1. An account on [railway.app](https://railway.app/).
-2. GitHub account connected to Railway with access to this repository.
+1. An account on [render.com](https://render.com/).
+2. A GitHub account connected to Render with access to this repository.
 
 ---
 
-## Step 1: Create a Project
+## Step 1: Create a PostgreSQL Database on Render
 
-1. Log in to [Railway Dashboard](https://railway.app/dashboard).
-2. Click **New Project**.
-3. Select **Empty Project**.
+1. Log in to the [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** (top right) and select **PostgreSQL**.
+3. Configure the database details:
+   - **Name**: `contract-analyser-db`
+   - **Database**: `contract_analyser`
+   - **User**: `postgres` (or default generated user)
+   - **Region**: Select the region closest to you (e.g., Oregon, Frankfurt, Singapore).
+   - **Plan**: Free or Starter.
+4. Click **Create Database**.
+5. Once provisioned, find the **Connections** panel:
+   - Copy the **Internal Database URL** from the connection details. This is used by Render Web Services in the same region for fast, private connectivity without egress fees.
 
 ---
 
-## Step 2: Add Postgres Database
+## Step 2: Create a Web Service on Render
 
-1. Inside your new project canvas, click **Create** or **+ New**.
-2. Select **Database** -> **Add PostgreSQL**.
-3. Railway provisions a managed Postgres instance with automated volume storage.
+1. From the Render Dashboard, click **New +** and select **Web Service**.
+2. Under **Connect a repository**, select your GitHub repository (`Citation-assignment`).
+3. Configure the service settings:
+   - **Name**: `contract-analyser` (or your preferred service name)
+   - **Region**: Select the **same region** chosen for the PostgreSQL database in Step 1.
+   - **Branch**: `main` (Render deploys automatically on every push to `main`).
+   - **Runtime**: **Node**.
 
 ---
 
-## Step 3: Connect GitHub Repository
+## Step 3: Configure Build and Start Commands
 
-1. In the project canvas, click **+ New**.
-2. Select **GitHub Repo**.
-3. Choose this repository from the list.
-4. Railway will create a web service card linked to the repository.
+Under the **Build & Deploy** section of the Web Service settings:
+
+- **Build Command**:
+  ```bash
+  npm run build
+  ```
+- **Start Command**:
+  ```bash
+  npm run deploy
+  ```
+
+> **Why `npm run deploy`**: This executes `npm run db:migrate && next start -p ${PORT:-3000}`. Pending migrations from `src/server/db/migrations` run automatically against Postgres before the application server begins accepting traffic.
 
 ---
 
 ## Step 4: Configure Environment Variables
 
-1. Click on the web service card in the canvas and open the **Variables** tab.
-2. Add the following environment variable names:
+Navigate to the **Environment** tab of the Web Service and add the following environment variable names:
 
-| Variable Name | Value / Description |
+| Variable Name | Recommended Value / Description |
 |---|---|
-| `DATABASE_URL` | Set to `${{Postgres.DATABASE_URL}}` (uses Railway variable reference) or paste the Postgres connection string |
-| `LLM_BASE_URL` | OpenAI-compatible endpoint URL (e.g. `https://api.openai.com/v1` or OpenRouter URL) |
+| `DATABASE_URL` | Paste the **Internal Database URL** copied from the Render PostgreSQL service in Step 1 |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint URL (e.g. `https://api.openai.com/v1` or OpenRouter endpoint) |
 | `LLM_API_KEY` | Your secret LLM provider API key |
-| `LLM_MODEL` | The selected candidate model ID (e.g. `gpt-4o-mini`) |
+| `LLM_MODEL` | The candidate model identifier (e.g. `gpt-4o-mini`) |
 | `NODE_ENV` | `production` |
 
-> **Note**: `PORT` is automatically provided by Railway at runtime; do not hardcode it.
+> **Note on PORT**: Render automatically injects `PORT` (defaults to `10000`) into the environment. Our start script dynamically binds to `${PORT:-3000}`.
 
 ---
 
-## Step 5: Configure Build and Deploy Settings
+## Step 5: Deploy the Service
 
-1. In the web service card, navigate to the **Settings** tab.
-2. Under **Build**:
-   - **Build Command**: `npm run build`
-3. Under **Deploy**:
-   - **Start Command**: `npm run deploy` (or `npm run db:migrate && npm start`)
-   This ensures database migrations (`src/server/db/migrations`) run automatically on each deploy before the server accepts traffic.
+1. Click **Create Web Service** (or click **Manual Deploy** -> **Deploy latest commit**).
+2. Render will clone the repository, run `npm run build`, execute `npm run db:migrate`, and launch `next start`.
+3. Monitor the deployment logs in the dashboard to ensure the build completes and migrations apply cleanly.
 
 ---
 
-## Step 6: Generate a Public Domain
+## Step 6: Verify Health and Database Connectivity
 
-1. In the web service card, go to the **Settings** tab.
-2. Scroll to the **Networking** section.
-3. Under **Public Networking**, click **Generate Domain**.
-4. Railway will assign a public HTTPS URL (e.g., `https://contract-analyser-production.up.railway.app`).
-
----
-
-## Step 7: Verify Health and Database Connectivity
-
-1. Open a browser or run curl against the generated domain:
+1. In the Web Service header, copy the generated public HTTPS URL (e.g., `https://contract-analyser.onrender.com`).
+2. Test the `/api/health` endpoint via browser or curl:
    ```bash
-   curl -i https://<your-railway-domain>/api/health
+   curl -i https://<your-service-name>.onrender.com/api/health
    ```
-2. Verify the HTTP response:
-   - HTTP Status Code: `200 OK`
-   - Response Body:
+3. Expected successful response:
+   - **HTTP Status**: `200 OK`
+   - **Response Body**:
      ```json
      {"status":"ok","db":"ok"}
      ```
-3. If the database is unreachable or misconfigured, the endpoint returns:
-   - HTTP Status Code: `503 Service Unavailable`
-   - Response Body:
+4. If database connection fails:
+   - **HTTP Status**: `503 Service Unavailable`
+   - **Response Body**:
      ```json
      {"status":"error","db":"error"}
      ```
