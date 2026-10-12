@@ -115,6 +115,7 @@ export function MessageBubble({
                       </span>
                       <QuotePill
                         id={seg.localId}
+                        docId={seg.docId}
                         status={qStatus}
                         onClick={() => {
                           if (qRecord && onOpenQuoteInViewer) {

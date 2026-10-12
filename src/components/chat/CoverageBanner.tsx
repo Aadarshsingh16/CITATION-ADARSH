@@ -39,6 +39,16 @@ export function CoverageBanner({ coverage }: CoverageBannerProps) {
           only apply to the sections searched, not the entire agreement.
         </p>
 
+        {coverage.perDoc && Object.keys(coverage.perDoc).length > 1 && (
+          <div className="pt-1 flex flex-wrap gap-2 text-[11px] text-amber-800 dark:text-amber-300 font-mono">
+            {Object.entries(coverage.perDoc).map(([docKey, stats]) => (
+              <span key={docKey} className="bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
+                {docKey}: {stats.chunksRead}/{stats.chunksTotal} sections read
+              </span>
+            ))}
+          </div>
+        )}
+
         {unreadablePages && unreadablePages.length > 0 && (
           <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
             Note: Pages {unreadablePages.join(", ")} contained no readable text layer during ingestion.

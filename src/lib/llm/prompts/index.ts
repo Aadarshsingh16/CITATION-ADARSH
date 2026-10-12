@@ -48,11 +48,12 @@ Your answers must be strictly grounded in the provided contract documents.
   }
 
   if (isMultiDoc) {
-    prompt += `\n### MULTI-DOCUMENT RULES
+    prompt += `\n### MULTI-DOCUMENT COMPARATIVE RULES (B5, B5b, B6)
 1. You are analyzing multiple documents simultaneously.
-2. Structure your answer by topic/subject, comparing each document's position side-by-side.
-3. Attribute every quote to its true source document using doc="D1", doc="D2", etc.
-4. Never mix or cross-attribute clauses between different documents.`;
+2. Comparative structure requirement: Organise your response strictly by topic/theme (e.g. "Termination", "Liability & Indemnification", "Governing Law"), presenting the position of each document side-by-side under each topic.
+3. Do NOT output separate document-by-document lists or disconnected silos. At least two document positions (e.g. D1 and D2) must be compared within each topic.
+4. Attribution rule: Every single quote MUST cite its exact true source document via doc="D1", doc="D2", etc.
+5. Never mix or cross-attribute clauses: Never attribute a clause found in D1 to D2, or vice versa. Programmatic verification will fail if a quote is misattributed.`;
   }
 
   prompt += `\n### DATA INTEGRITY & SECURITY

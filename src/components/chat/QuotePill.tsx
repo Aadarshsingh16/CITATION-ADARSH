@@ -4,14 +4,16 @@ import React from "react";
 
 export interface QuotePillProps {
   id: string;
+  docId?: string;
   status?: "pending" | "verified" | "unverified" | "dropped";
   onClick?: () => void;
 }
 
-export function QuotePill({ id, status = "pending", onClick }: QuotePillProps) {
+export function QuotePill({ id, docId, status = "pending", onClick }: QuotePillProps) {
   let badgeStyles = "bg-stone-100 text-stone-600 border-stone-300 hover:bg-stone-200";
   let statusIcon = null;
-  let titleText = `Quote [${id}] - Verification pending`;
+  const docLabel = docId ? `${docId}·#${id}` : id;
+  let titleText = `Quote [${docLabel}] - Verification pending`;
 
   if (status === "pending") {
     badgeStyles = "bg-stone-100 text-stone-500 border-stone-200 animate-pulse";
@@ -23,7 +25,7 @@ export function QuotePill({ id, status = "pending", onClick }: QuotePillProps) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
       </svg>
     );
-    titleText = `Quote [${id}] - Verified in contract text`;
+    titleText = `Quote [${docLabel}] - Verified in contract text`;
   } else if (status === "unverified") {
     badgeStyles =
       "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 shadow-2xs";
@@ -32,7 +34,7 @@ export function QuotePill({ id, status = "pending", onClick }: QuotePillProps) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
     );
-    titleText = `Quote [${id}] - Unverified quote`;
+    titleText = `Quote [${docLabel}] - Unverified quote`;
   }
 
   return (
@@ -42,7 +44,7 @@ export function QuotePill({ id, status = "pending", onClick }: QuotePillProps) {
       title={titleText}
       className={`inline-flex items-center align-baseline px-1.5 py-0.2 mx-0.5 text-[11px] font-mono font-medium rounded-md border transition-all cursor-pointer ${badgeStyles}`}
     >
-      <span>[{id}]</span>
+      <span>[{docLabel}]</span>
       {statusIcon}
     </button>
   );
