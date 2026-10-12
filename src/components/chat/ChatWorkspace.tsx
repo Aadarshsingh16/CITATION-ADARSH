@@ -21,6 +21,7 @@ export function ChatWorkspace({
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<StoredChat[]>([]);
   const [showHistoryMenu, setShowHistoryMenu] = useState(false);
+  const [progressText, setProgressText] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -195,11 +196,14 @@ export function ChatWorkspace({
             setMessages((prev) =>
               prev.map((m) => {
                 if (m.id === userTempId) return { ...m, id: parsed.userMessageId, chatId: parsed.chatId };
-                if (m.id === assistantTempId) return { ...m, id: parsed.assistantMessageId, chatId: parsed.chatId };
+                if (m.id === assistantTempId) return { ...m, id: parsed.assistantMessageId, chatId: parsed.chatId, mode: parsed.mode };
                 return m;
               })
             );
+          } else if (eventName === "progress") {
+            setProgressText(parsed.step || `Analyzing (${parsed.percent}%)...`);
           } else if (eventName === "token") {
+            setProgressText(null);
             setMessages((prev) => {
               const next = [...prev];
               const last = next[next.length - 1];
@@ -476,6 +480,12 @@ export function ChatWorkspace({
 
       {/* 3. Composer Bar */}
       <div className="p-4 border-t border-stone-200 bg-white shrink-0">
+        {progressText && (
+          <div className="max-w-3xl mx-auto mb-2.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2 animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+            <span className="font-medium">{progressText}</span>
+          </div>
+        )}
         <div className="max-w-3xl mx-auto flex items-end gap-3">
           <div className="flex-1 relative">
             <textarea

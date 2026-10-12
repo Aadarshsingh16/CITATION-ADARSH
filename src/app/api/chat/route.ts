@@ -1,4 +1,4 @@
-import { getDocument, getDocumentPages } from "@/server/documents";
+import { getDocument, getDocumentPages, getDocumentChunks } from "@/server/documents";
 import {
   createChat,
   insertMessage,
@@ -23,12 +23,15 @@ import {
   buildChatUserMessage,
   type DocumentContextItem,
 } from "@/lib/llm/prompts";
-import type { Coverage } from "@/lib/types";
+import { routeQuestionMode } from "@/lib/chunking/router";
+import { retrieveChunksForQuery, type DocumentWithChunks } from "@/lib/chunking/retrieval";
+import { executeMapPhase, streamReduceAnswer } from "@/lib/chunking/map-reduce";
+import type { ChunkRecord, Coverage } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { documentIds, question, chatId: requestedChatId } = body;
+    const { documentIds, question, chatId: requestedChatId, mode: forceMode } = body;
 
     if (!Array.isArray(documentIds) || documentIds.length === 0) {
       return Response.json(
@@ -44,13 +47,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Fetch documents and pages
+    // 1. Fetch documents, pages, and chunks
     const docRecords: Array<{
       id: string;
       label: string;
       filename: string;
       text: string;
       pages: QuotePageBoundary[];
+      chunks: ChunkRecord[];
       unreadablePages: number[];
     }> = [];
 
@@ -76,6 +80,7 @@ export async function POST(request: Request) {
       }
 
       const pRows = await getDocumentPages(docId);
+      const cRows = await getDocumentChunks(docId);
       const label = `D${i + 1}`;
       allowedDocIds.push(label);
 
@@ -93,6 +98,7 @@ export async function POST(request: Request) {
         filename: doc.filename,
         text: doc.text,
         pages: parsedPages,
+        chunks: cRows as ChunkRecord[],
         unreadablePages: unreadable,
       };
 
@@ -100,7 +106,22 @@ export async function POST(request: Request) {
       labelToDoc[label] = item;
     }
 
-    // 2. Chat session & messages persistence
+    // 2. Determine processing mode
+    const config = getLLMConfig();
+    const contextBudget = config.contextBudget || 60000;
+    const totalTokens = docRecords.reduce(
+      (sum, d) => sum + Math.ceil(d.text.length / 4),
+      0
+    );
+
+    const mode = routeQuestionMode({
+      question,
+      totalTokens,
+      contextBudget,
+      forceMode,
+    });
+
+    // 3. Chat session & messages persistence
     let chatId = requestedChatId;
     if (!chatId) {
       const newChat = await createChat(
@@ -122,43 +143,11 @@ export async function POST(request: Request) {
       chatId,
       role: "assistant",
       content: "",
-      status: "stopped", // initial status; updated to 'complete' on finish
-      mode: "full",
+      status: "stopped", // initial status; updated on finish
+      mode,
     });
 
-    // 3. Compute coverage object
-    const allUnreadable = Array.from(
-      new Set(docRecords.flatMap((d) => d.unreadablePages))
-    );
-    const perDocCoverage: Record<string, { chunksTotal: number; chunksRead: number }> = {};
-    for (const d of docRecords) {
-      perDocCoverage[d.label] = { chunksTotal: 1, chunksRead: 1 };
-    }
-
-    const coverage: Coverage = {
-      mode: "full",
-      chunksTotal: docRecords.length,
-      chunksRead: docRecords.length,
-      complete: allUnreadable.length === 0,
-      unreadablePages: allUnreadable,
-      perDoc: perDocCoverage,
-    };
-
-    // 4. Build prompt
-    const systemPrompt = buildChatSystemPrompt({
-      isMultiDoc: docRecords.length > 1,
-      isCoveragePartial: !coverage.complete,
-    });
-
-    const contextDocs: DocumentContextItem[] = docRecords.map((d) => ({
-      docId: d.label,
-      filename: d.filename,
-      content: d.text,
-    }));
-
-    const userPromptContent = buildChatUserMessage(question, contextDocs);
-
-    // 5. Setup SSE Stream
+    // 4. Setup SSE Stream
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
@@ -168,9 +157,22 @@ export async function POST(request: Request) {
         const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
         await writer.write(encoder.encode(payload));
       } catch {
-        // Stream writing failed (e.g. client closed)
+        // stream writer closed
       }
     };
+
+    // Initial event
+    void sendSSE("init", {
+      chatId,
+      userMessageId,
+      assistantMessageId,
+      mode,
+      documents: docRecords.map((d) => ({
+        id: d.id,
+        label: d.label,
+        filename: d.filename,
+      })),
+    });
 
     // Telemetry stats
     const stats = {
@@ -193,19 +195,6 @@ export async function POST(request: Request) {
       }
     >();
 
-    // Initial event
-    void sendSSE("init", {
-      chatId,
-      userMessageId,
-      assistantMessageId,
-      documents: docRecords.map((d) => ({
-        id: d.id,
-        label: d.label,
-        filename: d.filename,
-      })),
-      coverage,
-    });
-
     // Setup StreamTagParser
     const parser = new StreamTagParser({
       allowedDocIds,
@@ -224,7 +213,6 @@ export async function POST(request: Request) {
         let pageNumber: number | undefined;
 
         if (target && target.text) {
-          // Build other document texts for misattribution check (D-016)
           const otherTexts: Record<string, string> = {};
           for (const otherLabel of allowedDocIds) {
             if (otherLabel !== q.docId && labelToDoc[otherLabel]?.text) {
@@ -297,24 +285,132 @@ export async function POST(request: Request) {
       abortController.abort();
     });
 
-    // Asynchronously consume LLM stream
+    // Asynchronously execute generation based on selected mode
     (async () => {
+      let finalCoverage: Coverage;
+
       try {
-        const config = getLLMConfig();
         if (!config.apiKey || !config.baseUrl) {
           throw new Error("LLM_API_KEY is not set in environment.");
         }
 
-        for await (const chunk of streamChatCompletion({
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPromptContent },
-          ],
-          signal: abortController.signal,
-        })) {
-          parser.feed(chunk);
+        const allUnreadable = Array.from(
+          new Set(docRecords.flatMap((d) => d.unreadablePages))
+        );
+
+        if (mode === "retrieval") {
+          // --- RETRIEVAL MODE ---
+          const docListWithChunks: DocumentWithChunks[] = docRecords.map((d) => ({
+            id: d.id,
+            label: d.label,
+            filename: d.filename,
+            text: d.text,
+            chunks: d.chunks,
+            unreadablePages: d.unreadablePages,
+          }));
+
+          const retRes = retrieveChunksForQuery(docListWithChunks, question);
+          finalCoverage = retRes.coverage;
+
+          await sendSSE("coverage", finalCoverage);
+
+          const systemPrompt = buildChatSystemPrompt({
+            isMultiDoc: docRecords.length > 1,
+            isCoveragePartial: true,
+            chunksRead: finalCoverage.chunksRead,
+            chunksTotal: finalCoverage.chunksTotal,
+          });
+
+          const userPrompt = `${retRes.contextText}\nBased on the above retrieved sections, answer the following question:\n${question}`;
+
+          for await (const chunk of streamChatCompletion({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            signal: abortController.signal,
+          })) {
+            parser.feed(chunk);
+          }
+          parser.end();
+        } else if (mode === "map_reduce") {
+          // --- MAP-REDUCE MODE ---
+          const docListWithChunks: DocumentWithChunks[] = docRecords.map((d) => ({
+            id: d.id,
+            label: d.label,
+            filename: d.filename,
+            text: d.text,
+            chunks: d.chunks,
+            unreadablePages: d.unreadablePages,
+          }));
+
+          const plan = await executeMapPhase({
+            documents: docListWithChunks,
+            question,
+            concurrency: 4,
+            signal: abortController.signal,
+            onProgress: (step, percent) => {
+              void sendSSE("progress", { step, percent });
+            },
+          });
+
+          finalCoverage = plan.coverage;
+          await sendSSE("coverage", finalCoverage);
+
+          // Stream reduce answer
+          for await (const chunk of streamReduceAnswer(
+            plan.reduceMessages,
+            abortController.signal
+          )) {
+            parser.feed(chunk);
+          }
+          parser.end();
+        } else {
+          // --- FULL MODE ---
+          const totalChunksCount = docRecords.reduce((sum, d) => sum + d.chunks.length, 0);
+          const perDocCoverage: Record<string, { chunksTotal: number; chunksRead: number }> = {};
+          for (const d of docRecords) {
+            perDocCoverage[d.label] = {
+              chunksTotal: d.chunks.length || 1,
+              chunksRead: d.chunks.length || 1,
+            };
+          }
+
+          finalCoverage = {
+            mode: "full",
+            chunksTotal: totalChunksCount || docRecords.length,
+            chunksRead: totalChunksCount || docRecords.length,
+            complete: allUnreadable.length === 0,
+            unreadablePages: allUnreadable,
+            perDoc: perDocCoverage,
+          };
+
+          await sendSSE("coverage", finalCoverage);
+
+          const systemPrompt = buildChatSystemPrompt({
+            isMultiDoc: docRecords.length > 1,
+            isCoveragePartial: !finalCoverage.complete,
+          });
+
+          const contextDocs: DocumentContextItem[] = docRecords.map((d) => ({
+            docId: d.label,
+            filename: d.filename,
+            content: d.text,
+          }));
+
+          const userPromptContent = buildChatUserMessage(question, contextDocs);
+
+          for await (const chunk of streamChatCompletion({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPromptContent },
+            ],
+            signal: abortController.signal,
+          })) {
+            parser.feed(chunk);
+          }
+          parser.end();
         }
-        parser.end();
 
         // Optional repair pass (D-036) for quotes returning not_found
         for (const [, item] of quoteRecords.entries()) {
@@ -376,13 +472,11 @@ export async function POST(request: Request) {
           }
         }
 
-        await sendSSE("coverage", coverage);
-
         const finalClean = parser.getCleanText();
         await updateMessage(assistantMessageId, {
           content: finalClean,
           status: "complete",
-          coverage,
+          coverage: finalCoverage,
           stats,
         });
 
@@ -393,13 +487,12 @@ export async function POST(request: Request) {
         });
       } catch (err: unknown) {
         if (request.signal.aborted || abortController.signal.aborted) {
-          // Client stopped mid-stream (Acceptance test A7)
           parser.end();
           const partialClean = parser.getCleanText();
           await updateMessage(assistantMessageId, {
             content: partialClean,
             status: "stopped",
-            coverage,
+            coverage: finalCoverage!,
             stats,
           });
 
@@ -422,7 +515,7 @@ export async function POST(request: Request) {
         try {
           await writer.close();
         } catch {
-          // stream writer already closed
+          // already closed
         }
       }
     })();

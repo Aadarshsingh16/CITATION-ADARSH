@@ -55,6 +55,18 @@ export function MessageBubble({
             <span className="text-xs font-semibold text-stone-800">
               Contract Analyser
             </span>
+
+            {message.mode && (
+              <span className="text-[10px] font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                {message.mode === "map_reduce"
+                  ? "Map-Reduce"
+                  : message.mode === "retrieval"
+                  ? "Retrieval"
+                  : message.mode === "agent"
+                  ? "Agent"
+                  : "Full Document"}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

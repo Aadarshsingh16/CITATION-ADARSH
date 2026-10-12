@@ -377,6 +377,17 @@ export async function getDocumentPages(documentId: string) {
 }
 
 /**
+ * Gets chunks for a document, ordered by ordinal.
+ */
+export async function getDocumentChunks(documentId: string) {
+  return db
+    .select()
+    .from(chunks)
+    .where(eq(chunks.documentId, documentId))
+    .orderBy(chunks.ordinal);
+}
+
+/**
  * Deletes a document and its cascading records.
  */
 export async function deleteDocument(documentId: string): Promise<boolean> {
