@@ -13,11 +13,13 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "llm:check": "tsx scripts/llm-check.ts",
-    "test": "echo \"No tests configured yet\" && exit 0"
+    "test": "tsx tests/phase1-ingestion.test.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
+    "mammoth": "^1.13.0",
     "next": "16.4.0",
+    "pdfjs-dist": "^4.10.38",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
