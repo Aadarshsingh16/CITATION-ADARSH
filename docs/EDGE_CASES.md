@@ -5,38 +5,38 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 ## Quotes and matching
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Same quote text appears twice | Return all matches. Prefer the one inside the cited chunk, else first. Viewer shows "1 of N" with next/previous | P2, P4 |
-| [ ] | Quote spans a page break | Single match across the boundary. Highlight is split into one range per page | P2, P4 |
-| [ ] | Quote spans several lines | Whitespace-insensitive match. Highlight covers all lines | P2, P4 |
-| [ ] | Hyphenation at line end ("termi-\nnation") | Matches both the joined and the hyphen-kept variant | P2 |
-| [ ] | Curly vs straight quotes, en/em dashes | Normalised to the same form on both sides | P2 |
-| [ ] | Ligatures (fi, fl) | Expanded through NFKC | P2 |
-| [ ] | Extraction splits a word with a space | Whitespace removal makes it match | P2 |
-| [ ] | Quote is in a table | Table cell text appears in the canonical text in reading order. Quote that crosses cells may fail, shows unverified with a clear reason | P2 |
+| [x] | Same quote text appears twice | Return all matches. Prefer the one inside the cited chunk, else first. Viewer shows "1 of N" with next/previous | P2, P4 |
+| [x] | Quote spans a page break | Single match across the boundary. Highlight is split into one range per page | P2, P4 |
+| [x] | Quote spans several lines | Whitespace-insensitive match. Highlight covers all lines | P2, P4 |
+| [x] | Hyphenation at line end ("termi-\nnation") | Matches both the joined and the hyphen-kept variant | P2 |
+| [x] | Curly vs straight quotes, en/em dashes | Normalised to the same form on both sides | P2 |
+| [x] | Ligatures (fi, fl) | Expanded through NFKC | P2 |
+| [x] | Extraction splits a word with a space | Whitespace removal makes it match | P2 |
+| [x] | Quote is in a table | Table cell text appears in the canonical text in reading order. Quote that crosses cells may fail, shows unverified with a clear reason | P2 |
 | [ ] | Repeated headers and footers on every page | Quote that includes a running header is not matched across pages unless the header is in the text. Consider stripping repeated lines at extraction and recording that | P1 |
-| [ ] | Quote shorter than 15 normalised chars | Unverified, reason `too_short` | P2 |
-| [ ] | Quote with ellipsis | Segments found in order within the window, labelled "verified with gaps". If any segment is missing, unverified | P2 |
-| [ ] | Quote matches mid-word in the original | Rejected by the word-boundary check | P2 |
-| [ ] | Model changes one word | Unverified. We do not rescue near matches | P2 |
-| [ ] | Model paraphrases but puts it in tags | Unverified, never shown as genuine | P2 |
-| [ ] | Model returns zero quotes | Answer is shown with a note "no supporting quote was provided". If the answer asserts facts, mark it as unsupported | P2 |
-| [ ] | Model emits malformed `<q>` tags or an unclosed tag | Parser tolerates, drops what it cannot parse, the answer text stays | P2 |
-| [ ] | Model cites a doc id that was not sent | Dropped and counted in telemetry | P2, P5 |
-| [ ] | Reported page or offset is wrong | Ignored. We locate the quote ourselves | P2 |
+| [x] | Quote shorter than 15 normalised chars | Unverified, reason `too_short` | P2 |
+| [x] | Quote with ellipsis | Segments found in order within the window, labelled "verified with gaps". If any segment is missing, unverified | P2 |
+| [x] | Quote matches mid-word in the original | Rejected by the word-boundary check | P2 |
+| [x] | Model changes one word | Unverified. We do not rescue near matches | P2 |
+| [x] | Model paraphrases but puts it in tags | Unverified, never shown as genuine | P2 |
+| [x] | Model returns zero quotes | Answer is shown with a note "no supporting quote was provided". If the answer asserts facts, mark it as unsupported | P2 |
+| [x] | Model emits malformed `<q>` tags or an unclosed tag | Parser tolerates, drops what it cannot parse, the answer text stays | P2 |
+| [x] | Model cites a doc id that was not sent | Dropped and counted in telemetry | P2, P5 |
+| [x] | Reported page or offset is wrong | Ignored. We locate the quote ourselves | P2 |
 | [ ] | Quote not locatable in the viewer despite verified status | Show a notice rather than a silent no-op | P4 |
 
 ## Answers and honesty
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Answer is not in the document | Says it was not found, no invented clause, no fake quote | P2 |
+| [x] | Answer is not in the document | Says it was not found, no invented clause, no fake quote | P2 |
 | [ ] | Absence question with partial coverage | Hedged wording ("not found in the N of M sections read"), banner visible | P3 |
 | [ ] | Absence question, map-reduce complete | May state absence, with coverage shown | P3 |
 | [ ] | Document has unreadable pages | Coverage incomplete, note names the pages | P1, P3 |
 | [ ] | One map call fails | Retry once, then partial coverage and stated | P3 |
-| [ ] | User stops mid-stream | Partial text saved, already-verified quotes kept, unclosed quote tag dropped, message marked Stopped | P2 |
-| [ ] | LLM error or timeout mid-stream | Partial text kept, error state with retry | P2 |
-| [ ] | Question is vague or off-topic | Short answer asking what to look for, no invented content | P2 |
-| [ ] | Prompt injection inside the contract text ("ignore previous instructions") | Document text is treated as data, delimited in the prompt, instructions ignored | P2 |
+| [x] | User stops mid-stream | Partial text saved, already-verified quotes kept, unclosed quote tag dropped, message marked Stopped | P2 |
+| [x] | LLM error or timeout mid-stream | Partial text kept, error state with retry | P2 |
+| [x] | Question is vague or off-topic | Short answer asking what to look for, no invented content | P2 |
+| [x] | Prompt injection inside the contract text ("ignore previous instructions") | Document text is treated as data, delimited in the prompt, instructions ignored | P2 |
 
 ## Upload and ingestion
 | Done | Case | Expected behaviour | Phase |
