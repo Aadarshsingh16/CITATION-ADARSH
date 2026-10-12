@@ -68,17 +68,17 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 ## Comparison
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Cap changes from AED 100,000 to AED 1,000,000 | Detected as numeric change, High significance, plain summary names both values | P6 |
-| [ ] | Pure rewording, same meaning | Cosmetic or Low, summary says wording only | P6 |
-| [ ] | Clause renumbered only | `moved`, not added plus removed | P6 |
-| [ ] | Clause added or removed | Listed with its text, significance judged | P6 |
-| [ ] | One clause split into two or two merged | Alignment shows best match plus the extra unit as added or removed, noted as restructure | P6 |
-| [ ] | "shall" changed to "may", negation added | Modal and negation signals raise significance | P6 |
-| [ ] | Date or duration changed (30 to 90 days) | Numeric signal, Medium or High | P6 |
-| [ ] | Party name changed | Party signal raises significance | P6 |
-| [ ] | Identical documents | "No differences found" state | P6 |
-| [ ] | Documents unrelated | Warn that alignment confidence is low | P6 |
-| [ ] | Very many changes | Pagination or virtualised list, filter by significance | P6 |
+| [x] | Cap changes from AED 100,000 to AED 1,000,000 | Detected as numeric change, High significance, plain summary names both values | P6 |
+| [x] | Pure rewording, same meaning | Cosmetic or Low, summary says wording only | P6 |
+| [x] | Clause renumbered only | `moved`/`renumbered`, not added plus removed | P6 |
+| [x] | Clause added or removed | Listed with its text, significance judged | P6 |
+| [x] | One clause split into two or two merged | Alignment shows best match plus the extra unit as added or removed, noted as restructure | P6 |
+| [x] | "shall" changed to "may", negation added | Modal and negation signals raise significance | P6 |
+| [x] | Date or duration changed (30 to 90 days) | Numeric signal, Medium or High | P6 |
+| [x] | Party name changed | Party signal raises significance | P6 |
+| [x] | Identical documents | "No differences found" state | P6 |
+| [x] | Documents unrelated | Warn that alignment confidence is low | P6 |
+| [x] | Very many changes | Pagination or virtualised list, filter by significance | P6 |
 
 ## Agent (Part C)
 | Done | Case | Expected behaviour | Phase |

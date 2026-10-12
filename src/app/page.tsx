@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { LibrarySidebar } from "@/components/library/LibrarySidebar";
 import { DocumentViewer } from "@/components/library/DocumentViewer";
 import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
+import { ComparisonView } from "@/components/compare/ComparisonView";
 import type { StoredQuote } from "@/server/chat";
 
 export default function Home() {
@@ -13,6 +14,10 @@ export default function Home() {
     text: string;
     documentId?: string;
     quoteId?: string;
+  } | null>(null);
+  const [activeComparisonPair, setActiveComparisonPair] = useState<{
+    docAId: string;
+    docBId: string;
   } | null>(null);
 
   const handleToggleSelect = (id: string, selected: boolean) => {
@@ -36,7 +41,7 @@ export default function Home() {
   };
 
   const handleCompare = (idA: string, idB: string) => {
-    alert(`Comparison view between ${idA} and ${idB} will be available in Phase 6.`);
+    setActiveComparisonPair({ docAId: idA, docBId: idB });
   };
 
   return (
@@ -74,6 +79,15 @@ export default function Home() {
         }}
         onClearActiveQuote={() => setActiveQuoteCitation(null)}
       />
+
+      {/* 4. Document Comparison Modal View (Phase 6, B8, B10) */}
+      {activeComparisonPair && (
+        <ComparisonView
+          docAId={activeComparisonPair.docAId}
+          docBId={activeComparisonPair.docBId}
+          onClose={() => setActiveComparisonPair(null)}
+        />
+      )}
     </div>
   );
 }
