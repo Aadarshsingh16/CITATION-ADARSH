@@ -77,21 +77,21 @@ docs(decisions): record D-012 inline quote protocol
 docs(progress): log P2 gate results
 ```
 
-## Branches, merging, tags
-- `main` is always deployable and is what gets deployed.
-- Work on `phase/pN-short-name`. Parallel tracks (see `docs/PHASES.md`): `track/a-depth`, `track/b-viewer`, `track/c-compare`.
-- Merge into `main` with `git merge --no-ff` so the small commits remain visible. Do not squash-merge.
-- After merging, run the build and the full test suite on `main`.
+## Branches, commits, tags
+- Single-branch workflow: All work, commits and pushes are directly on `main`. No feature or phase branches.
+- `main` is always deployable and is what gets deployed to Render.
+- Keep commits small, building incrementally, and formatted using Conventional Commits.
+- Run the build and the full test suite directly on `main` before each push.
 - Tag each passed gate: `git tag -a pN-gate -m "P<N> exit gate passed"`, then `git push origin main --tags`.
 
 ## Phase gate procedure
 1. Run the exit gate from `docs/PHASES.md` yourself. Observe the result.
 2. Add a row to `docs/PROGRESS.md` with what was run, what was observed, and what is not working or OPEN.
 3. Tick the handled items in `docs/EDGE_CASES.md` and add rows to `docs/DECISIONS.md` for anything newly decided.
-4. Commit docs separately: `docs(progress): log P<N> gate results`.
-5. Merge the phase branch into `main` with `--no-ff`, tag `pN-gate`, push with tags.
-6. Deploy and smoke test on the deployed URL (private window).
-7. Show the owner `git log --oneline --graph -20`, `git status`, and the gate results. Stop and wait for approval.
+4. Commit docs separately on `main`: `docs(progress): log P<N> gate results`.
+5. Tag `pN-gate` on `main`, push to `origin main --tags`.
+6. Deploy to Render and smoke test on the deployed URL (private window).
+7. Show the owner `git log --oneline -20`, `git status`, and the gate results. Stop and wait for approval.
 
 ## Fixing mistakes
 | Situation | Do this |

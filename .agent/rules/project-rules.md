@@ -19,8 +19,7 @@
 10. **Single sources of truth.** Quote matching only in `src/lib/quotes.ts`. Chunking only in `src/lib/chunking/`.
     LLM access only through `src/lib/llm/client.ts`.
 11. **UI states.** A feature is not done until every applicable state in `docs/DESIGN.md` exists and was seen.
-12. **Commits.** Small commits per phase with conventional messages (feat:, fix:, docs:, test:, chore:). No secrets,
-    no generated junk, no large binaries.
+12. **Commits and workflow.** Work and push directly on `main` only — no feature or phase branches. Small commits with conventional messages (feat:, fix:, docs:, test:, chore:). No secrets, no generated junk, no large binaries.
 13. **Tests for risky logic.** Write tests for quote matching, chunking, tool validation and comparison alignment
     before or with the implementation.
 14. **User-facing text.** Plain language, say what happened and what to do next, no em dashes.
@@ -28,7 +27,7 @@
     in `docs/DECISIONS.md`.
 16. **Audit amendments are binding.** `docs/ARCHITECTURE.md` "Amendments", `docs/DECISIONS.md` rows D-034 and later, and the
     "Added acceptance tests" in `docs/PROJECT_BRIEF.md` supersede earlier text where they conflict.
-17. **Test on the deployed app.** After each phase deploy, test in a private window. Do not report a phase as done based only on localhost.
-18. **Parallel tracks respect file ownership** (see `docs/PHASES.md`). Do not edit `src/lib/quotes.ts` or `src/lib/types.ts` after the P2 gate without asking.
+17. **Test on the deployed app.** After deploying to Render, test in a private window. Do not report a phase as done based only on localhost.
+18. **File ownership.** Do not edit `src/lib/quotes.ts` or `src/lib/types.ts` after the P2 gate without asking.
 19. **Knowledge graph (graphify).** Before reading raw files across the codebase to explore structure or architecture, consult `graphify-out/wiki/index.md` or run `graphify query "<question>"` / `graphify path` to retrieve exact symbols, file paths and relationships with minimal token usage. Keep the graph in sync with `graphify update .`.
 
