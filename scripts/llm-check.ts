@@ -5,6 +5,30 @@
  * Never prints or logs the API key.
  */
 
+import fs from "node:fs";
+import path from "node:path";
+
+function loadEnvFile(): void {
+  for (const envFile of [".env.local", ".env"]) {
+    const envPath = path.resolve(process.cwd(), envFile);
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          const val = trimmed.slice(eqIdx + 1).split("#")[0].trim().replace(/^["']|["']$/g, "");
+          if (!process.env[key] && val) {
+            process.env[key] = val;
+          }
+        }
+      }
+    }
+  }
+}
+
 interface ModelCheckResult {
   model: string;
   streaming: boolean;
@@ -83,6 +107,9 @@ async function testModel(baseUrl: string, apiKey: string, model: string): Promis
       }
       result.totalMs = Date.now() - start;
       result.streaming = chunkCount > 1;
+    } else {
+      const errText = await res.text();
+      console.error(`Request failed (${res.status} ${res.statusText}):`, errText);
     }
   } catch (err: unknown) {
     result.error = err instanceof Error ? err.message : String(err);
@@ -199,8 +226,9 @@ async function testModel(baseUrl: string, apiKey: string, model: string): Promis
 }
 
 async function main() {
+  loadEnvFile();
   const apiKey = process.env.LLM_API_KEY;
-  if (!apiKey) {
+  if (!apiKey || apiKey === "PUT_YOUR_OPENROUTER_API_KEY_HERE") {
     console.error("LLM_API_KEY is not set");
     process.exit(1);
   }
