@@ -29,10 +29,10 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
 | [x] | Answer is not in the document | Says it was not found, no invented clause, no fake quote | P2 |
-| [ ] | Absence question with partial coverage | Hedged wording ("not found in the N of M sections read"), banner visible | P3 |
-| [ ] | Absence question, map-reduce complete | May state absence, with coverage shown | P3 |
-| [ ] | Document has unreadable pages | Coverage incomplete, note names the pages | P1, P3 |
-| [ ] | One map call fails | Retry once, then partial coverage and stated | P3 |
+| [x] | Absence question with partial coverage | Hedged wording ("not found in the N of M sections read"), banner visible | P3 |
+| [x] | Absence question, map-reduce complete | May state absence, with coverage shown | P3 |
+| [x] | Document has unreadable pages | Coverage incomplete, note names the pages | P1, P3 |
+| [x] | One map call fails | Retry once, then partial coverage and stated | P3 |
 | [x] | User stops mid-stream | Partial text saved, already-verified quotes kept, unclosed quote tag dropped, message marked Stopped | P2 |
 | [x] | LLM error or timeout mid-stream | Partial text kept, error state with retry | P2 |
 | [x] | Question is vague or off-topic | Short answer asking what to look for, no invented content | P2 |
