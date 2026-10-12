@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Enforces Conventional Commits: type(scope): summary  (summary <= 72 chars on the first line)
+msg_file="$1"
+first="$(head -n1 "$msg_file")"
+
+case "$first" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0;;
+esac
+
+re='^(feat|fix|test|docs|refactor|chore|perf)(\([a-z0-9-]+\))?: .+'
+if ! printf '%s' "$first" | grep -Eq "$re"; then
+  echo "BAD COMMIT MESSAGE: $first"
+  echo "Use: type(scope): imperative summary"
+  echo "Types: feat fix test docs refactor chore perf. Example: feat(quotes): normalise text with index map"
+  exit 1
+fi
+if [ "${#first}" -gt 72 ]; then
+  echo "BAD COMMIT MESSAGE: first line is ${#first} characters, limit is 72."
+  exit 1
+fi
+exit 0
