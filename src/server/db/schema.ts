@@ -19,7 +19,6 @@ export const documents = pgTable("documents", {
   pageCount: integer("page_count"),
   charCount: integer("char_count"),
   text: text("text"),
-  fileRef: text("file_ref"),
   sha256: text("sha256"),
   unreadablePages: integer("unreadable_pages").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -43,6 +42,7 @@ export const pages = pgTable("pages", {
   pageNumber: integer("page_number").notNull(),
   startOffset: integer("start_offset").notNull(),
   endOffset: integer("end_offset").notNull(),
+  items: jsonb("items"),
 });
 
 export const chunks = pgTable("chunks", {
