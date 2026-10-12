@@ -59,11 +59,11 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 ## Multi-document
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Same quote text exists in two documents | Verified against the document named in the tag only | P5 |
-| [ ] | Quote exists only in a different selected doc | Unverified, reason `wrong_document` | P5 |
-| [ ] | A selected doc is still processing or failed | Not selectable, hint explains why | P5 |
-| [ ] | Documents differ greatly in size | Per-doc coverage shown | P5 |
-| [ ] | Total size exceeds the budget | Per-document map-reduce, coverage per doc | P3, P5 |
+| [x] | Same quote text exists in two documents | Verified against the document named in the tag only | P5 |
+| [x] | Quote exists only in a different selected doc | Unverified, reason `wrong_document` | P5 |
+| [x] | A selected doc is still processing or failed | Not selectable, hint explains why | P5 |
+| [x] | Documents differ greatly in size | Per-doc coverage shown | P5 |
+| [x] | Total size exceeds the budget | Per-document map-reduce, coverage per doc | P3, P5 |
 
 ## Comparison
 | Done | Case | Expected behaviour | Phase |
