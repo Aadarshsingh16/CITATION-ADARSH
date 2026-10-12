@@ -23,7 +23,7 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 | [x] | Model emits malformed `<q>` tags or an unclosed tag | Parser tolerates, drops what it cannot parse, the answer text stays | P2 |
 | [x] | Model cites a doc id that was not sent | Dropped and counted in telemetry | P2, P5 |
 | [x] | Reported page or offset is wrong | Ignored. We locate the quote ourselves | P2 |
-| [ ] | Quote not locatable in the viewer despite verified status | Show a notice rather than a silent no-op | P4 |
+| [x] | Quote not locatable in the viewer despite verified status | Show a notice rather than a silent no-op | P4 |
 
 ## Answers and honesty
 | Done | Case | Expected behaviour | Phase |
