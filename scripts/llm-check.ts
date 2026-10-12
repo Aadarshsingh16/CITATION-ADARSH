@@ -1,56 +1,252 @@
 /**
- * Smoke tests LLM configuration from environment variables (OpenAI-compatible).
- * Checks connectivity and basic completion to verify provider and model work.
+ * Smoke tests and capability benchmarks for candidate LLMs (OpenAI-compatible).
+ * Usage: npm run llm:check -- --model <id> [--model <id> ...]
+ * Checks: streaming, abort, tool-call round trip, JSON-only, time to first token (ttft), total ms.
+ * Never prints or logs the API key.
  */
-async function main() {
-  const baseUrl = process.env.LLM_BASE_URL;
-  const apiKey = process.env.LLM_API_KEY;
-  const model = process.env.LLM_MODEL;
 
-  console.log("=== LLM Configuration Check ===");
-  console.log(`Base URL: ${baseUrl || "(not set)"}`);
-  console.log(`Model:    ${model || "(not set)"}`);
-  console.log(`API Key:  ${apiKey ? "(set, " + apiKey.length + " chars)" : "(not set)"}`);
+interface ModelCheckResult {
+  model: string;
+  streaming: boolean;
+  abort: boolean;
+  toolCall: boolean;
+  jsonOnly: boolean;
+  ttftMs: number;
+  totalMs: number;
+  error?: string;
+}
 
-  if (!baseUrl || !apiKey || !model) {
-    console.log("\n[NOTE] LLM environment variables are not set in current environment.");
-    console.log("Set LLM_BASE_URL, LLM_API_KEY, and LLM_MODEL in .env.local to test a live model.");
-    return;
+function parseModelArgs(argv: string[]): string[] {
+  const models: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--model" && i + 1 < argv.length) {
+      models.push(argv[++i]);
+    }
   }
+  if (models.length === 0 && process.env.LLM_MODEL) {
+    models.push(process.env.LLM_MODEL);
+  }
+  return models;
+}
 
+async function testModel(baseUrl: string, apiKey: string, model: string): Promise<ModelCheckResult> {
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
-  console.log(`\nPinging endpoint: ${endpoint}...`);
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
 
+  const result: ModelCheckResult = {
+    model,
+    streaming: false,
+    abort: false,
+    toolCall: false,
+    jsonOnly: false,
+    ttftMs: 0,
+    totalMs: 0,
+  };
+
+  // 1. Streaming + TTFT + Total ms
   try {
     const start = Date.now();
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model,
-        messages: [{ role: "user", content: "Reply with the single word 'OK'." }],
-        max_tokens: 10,
+        stream: true,
+        messages: [{ role: "user", content: "Count from 1 to 5." }],
+        max_tokens: 30,
         temperature: 0,
       }),
     });
 
-    const elapsed = Date.now() - start;
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`[FAIL] HTTP ${res.status}: ${errText}`);
-      process.exit(1);
+    if (res.ok && res.body) {
+      let firstChunk = true;
+      let chunkCount = 0;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (firstChunk) {
+          result.ttftMs = Date.now() - start;
+          firstChunk = false;
+        }
+        const text = decoder.decode(value);
+        if (text.includes("data:")) {
+          chunkCount++;
+        }
+      }
+      result.totalMs = Date.now() - start;
+      result.streaming = chunkCount > 1;
+    }
+  } catch (err: unknown) {
+    result.error = err instanceof Error ? err.message : String(err);
+  }
+
+  // 2. Abort check
+  try {
+    const controller = new AbortController();
+    const abortReq = fetch(endpoint, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        stream: true,
+        messages: [{ role: "user", content: "Write a long essay." }],
+        max_tokens: 200,
+      }),
+    });
+
+    setTimeout(() => controller.abort(), 60);
+
+    try {
+      const res = await abortReq;
+      if (res.body) {
+        const reader = res.body.getReader();
+        while (true) {
+          const { done } = await reader.read();
+          if (done) break;
+        }
+      }
+    } catch {
+      // AbortError expected
     }
 
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    console.log(`[PASS] Received response in ${elapsed}ms: ${JSON.stringify(content)}`);
-  } catch (err: unknown) {
-    console.error(`[FAIL] Request error:`, err);
-    process.exit(1);
+    if (controller.signal.aborted) {
+      result.abort = true;
+    }
+  } catch {
+    result.abort = false;
   }
+
+  // 3. Tool-call round trip
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: "Look up clause 12." }],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "lookup_clause",
+              description: "Look up a specific contract clause",
+              parameters: {
+                type: "object",
+                properties: {
+                  clause_id: { type: "string" },
+                },
+                required: ["clause_id"],
+              },
+            },
+          },
+        ],
+        tool_choice: "auto",
+        temperature: 0,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const calls = data.choices?.[0]?.message?.tool_calls;
+      if (calls && calls.length > 0 && calls[0]?.function?.name === "lookup_clause") {
+        result.toolCall = true;
+      }
+    }
+  } catch {
+    result.toolCall = false;
+  }
+
+  // 4. JSON-only format
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "You output JSON only." },
+          { role: "user", content: "Output JSON with key 'status' set to 'ok'." },
+        ],
+        temperature: 0,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content);
+        if (parsed && typeof parsed === "object" && parsed.status === "ok") {
+          result.jsonOnly = true;
+        }
+      }
+    }
+  } catch {
+    result.jsonOnly = false;
+  }
+
+  return result;
 }
 
-main();
+async function main() {
+  const apiKey = process.env.LLM_API_KEY;
+  if (!apiKey) {
+    console.error("LLM_API_KEY is not set");
+    process.exit(1);
+  }
+
+  const baseUrl = process.env.LLM_BASE_URL || "https://api.openai.com/v1";
+  const models = parseModelArgs(process.argv.slice(2));
+
+  if (models.length === 0) {
+    console.error("No model specified. Use --model <id> or set LLM_MODEL in environment.");
+    process.exit(1);
+  }
+
+  console.log(`Running llm:check against ${models.length} model(s)...`);
+
+  const results: ModelCheckResult[] = [];
+  let allPassed = true;
+
+  for (const model of models) {
+    const res = await testModel(baseUrl, apiKey, model);
+    results.push(res);
+    const passed = res.streaming && res.abort && res.toolCall && res.jsonOnly;
+    if (!passed) {
+      allPassed = false;
+    }
+  }
+
+  // Print results table
+  console.log("\n| model | streaming | abort | tool-call round trip | JSON-only | time to first token | total ms |");
+  console.log("|---|---|---|---|---|---|---|");
+  for (const r of results) {
+    const s = r.streaming ? "PASS" : "FAIL";
+    const a = r.abort ? "PASS" : "FAIL";
+    const tc = r.toolCall ? "PASS" : "FAIL";
+    const j = r.jsonOnly ? "PASS" : "FAIL";
+    const ttft = r.ttftMs ? `${r.ttftMs}ms` : "n/a";
+    const total = r.totalMs ? `${r.totalMs}ms` : "n/a";
+    console.log(`| ${r.model} | ${s} | ${a} | ${tc} | ${j} | ${ttft} | ${total} |`);
+  }
+
+  if (!allPassed) {
+    console.error("\nOne or more model checks failed.");
+    process.exit(1);
+  }
+
+  console.log("\nAll model checks passed.");
+}
+
+main().catch((err) => {
+  console.error("Unexpected error in llm:check:", err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
