@@ -169,7 +169,11 @@ export async function POST(request: Request) {
 
     const sendSSE = async (event: string, data: unknown) => {
       try {
-        const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+        const dataObj =
+          typeof data === "object" && data !== null
+            ? { type: event, ...(data as Record<string, unknown>) }
+            : { type: event, data };
+        const payload = `event: ${event}\ndata: ${JSON.stringify(dataObj)}\n\n`;
         await writer.write(encoder.encode(payload));
       } catch {
         // stream writer closed
@@ -224,7 +228,7 @@ export async function POST(request: Request) {
       allowedDocIds,
       defaultDocId: "D1",
       onText: async (cleanChunk) => {
-        await sendSSE("token", { text: cleanChunk });
+        await sendSSE("token", { text: cleanChunk, token: cleanChunk });
       },
       onQuoteOpen: () => {
         stats.proposed++;

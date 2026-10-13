@@ -144,7 +144,12 @@ export function MessageBubble({
 
         {/* Message Text with inline QuotePills */}
         <div className="text-[15px] leading-[1.65] text-[#111827] space-y-3 mt-1">
-          {segments.length > 0 ? (
+          {isStreaming && !message.content ? (
+            <div className="flex items-center gap-2.5 text-[13px] text-[#6B7280] py-2">
+              <div className="w-4 h-4 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>Analyzing contract and verifying quotes...</span>
+            </div>
+          ) : segments.length > 0 ? (
             <p className="whitespace-pre-wrap">
               {segments.map((seg, idx) => {
                 if (seg.type === "text") {

@@ -206,56 +206,89 @@ export function ChatWorkspace({
         buffer = lines.pop() || "";
 
         for (const block of lines) {
-          const trimmed = block.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const jsonStr = trimmed.replace(/^data:\s*/, "");
-          if (jsonStr === "[DONE]") break;
+          const blockTrimmed = block.trim();
+          if (!blockTrimmed) continue;
+
+          let eventName = "message";
+          let dataStr = "";
+
+          for (const rawLine of blockTrimmed.split("\n")) {
+            const line = rawLine.trim();
+            if (line.startsWith("event:")) {
+              eventName = line.replace(/^event:\s*/, "").trim();
+            } else if (line.startsWith("data:")) {
+              dataStr = line.replace(/^data:\s*/, "").trim();
+            }
+          }
+
+          if (!dataStr) continue;
+          if (dataStr === "[DONE]") break;
 
           try {
-            const ev = JSON.parse(jsonStr);
+            const ev = JSON.parse(dataStr);
+            const eventType = ev.type || eventName;
 
-            if (ev.type === "init") {
+            if (eventType === "init") {
               if (ev.chatId && !currentChatId) {
                 setCurrentChatId(ev.chatId);
               }
-            } else if (ev.type === "progress") {
+            } else if (eventType === "progress") {
               setProgressText(ev.message || "Analyzing clauses...");
-            } else if (ev.type === "trace") {
-              setProgressText(ev.step?.label || "Researching...");
-            } else if (ev.type === "token") {
-              setMessages((prev) => {
-                const next = [...prev];
-                const lastIdx = next.length - 1;
-                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
-                  next[lastIdx] = {
-                    ...next[lastIdx],
-                    content: (next[lastIdx].content || "") + (ev.token || ""),
-                  };
-                }
-                return next;
-              });
-            } else if (ev.type === "quote") {
-              setMessages((prev) => {
-                const next = [...prev];
-                const lastIdx = next.length - 1;
-                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
-                  const existingQuotes = next[lastIdx].quotes || [];
-                  const quoteIdx = existingQuotes.findIndex(
-                    (q) => q.localId === ev.quote.localId
-                  );
-                  if (quoteIdx >= 0) {
-                    existingQuotes[quoteIdx] = ev.quote;
-                  } else {
-                    existingQuotes.push(ev.quote);
+            } else if (eventType === "trace" || eventType === "agent_trace") {
+              setProgressText(ev.step?.label || ev.label || "Researching...");
+            } else if (eventType === "token") {
+              const tokenText = ev.text ?? ev.token ?? "";
+              if (tokenText) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const lastIdx = next.length - 1;
+                  if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                    next[lastIdx] = {
+                      ...next[lastIdx],
+                      content: (next[lastIdx].content || "") + tokenText,
+                    };
                   }
+                  return next;
+                });
+              }
+            } else if (eventType === "quote") {
+              const quoteObj = ev.quote || ev;
+              if (quoteObj && quoteObj.localId) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const lastIdx = next.length - 1;
+                  if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                    const existingQuotes = next[lastIdx].quotes || [];
+                    const quoteIdx = existingQuotes.findIndex(
+                      (q) => q.localId === quoteObj.localId
+                    );
+                    if (quoteIdx >= 0) {
+                      existingQuotes[quoteIdx] = quoteObj;
+                    } else {
+                      existingQuotes.push(quoteObj);
+                    }
+                    next[lastIdx] = {
+                      ...next[lastIdx],
+                      quotes: [...existingQuotes],
+                    };
+                  }
+                  return next;
+                });
+              }
+            } else if (eventType === "coverage") {
+              const cov = ev.coverage || ev;
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
                   next[lastIdx] = {
                     ...next[lastIdx],
-                    quotes: [...existingQuotes],
+                    coverage: cov,
                   };
                 }
                 return next;
               });
-            } else if (ev.type === "complete") {
+            } else if (eventType === "done" || eventType === "complete") {
               setProgressText(null);
               setMessages((prev) => {
                 const next = [...prev];
@@ -264,16 +297,17 @@ export function ChatWorkspace({
                   next[lastIdx] = {
                     ...next[lastIdx],
                     id: ev.messageId || next[lastIdx].id,
-                    mode: ev.mode,
-                    coverage: ev.coverage,
+                    content: ev.content !== undefined ? ev.content : next[lastIdx].content,
+                    mode: ev.mode || next[lastIdx].mode,
+                    coverage: ev.coverage || next[lastIdx].coverage,
                     quotes: ev.quotes || next[lastIdx].quotes,
-                    stats: ev.stats,
-                    status: "complete",
+                    stats: ev.stats || next[lastIdx].stats,
+                    status: ev.stopped ? "stopped" : "complete",
                   };
                 }
                 return next;
               });
-            } else if (ev.type === "error") {
+            } else if (eventType === "error") {
               setProgressText(null);
               setMessages((prev) => {
                 const next = [...prev];
