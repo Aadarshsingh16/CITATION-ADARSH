@@ -145,7 +145,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               <StatusChip status={doc.status} rejectReason={doc.rejectReason} />
 
               {/* Action icons */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 hover:opacity-100 transition-opacity">
                 {doc.status === "failed" || doc.status === "rejected" ? (
                   <button
                     type="button"
@@ -166,6 +166,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
                   }}
                   className="p-1 text-[#6B7280] hover:text-[#B91C1C] hover:bg-[#FEE2E2] rounded-[4px] transition-colors cursor-pointer"
                   title="Delete document"
+                  aria-label="Delete document"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

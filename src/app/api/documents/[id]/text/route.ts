@@ -27,17 +27,27 @@ export async function GET(_req: Request, { params }: RouteParams) {
       .where(eq(pages.documentId, id))
       .orderBy(pages.pageNumber);
 
+    const pagesWithText = docPages.map((p) => ({
+      ...p,
+      pageText: doc.text ? doc.text.slice(p.startOffset, p.endOffset) : "",
+    }));
+
+    const result = {
+      id: doc.id,
+      filename: doc.filename,
+      mime: doc.mime,
+      status: doc.status,
+      pageCount: doc.pageCount,
+      charCount: doc.charCount,
+      text: doc.text,
+      unreadablePages: doc.unreadablePages,
+      pages: pagesWithText,
+    };
+
     return NextResponse.json(
       {
-        id: doc.id,
-        filename: doc.filename,
-        mime: doc.mime,
-        status: doc.status,
-        pageCount: doc.pageCount,
-        charCount: doc.charCount,
-        text: doc.text,
-        unreadablePages: doc.unreadablePages,
-        pages: docPages,
+        ...result,
+        document: result,
       },
       { status: 200 }
     );

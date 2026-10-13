@@ -79,7 +79,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         if (!res.ok) throw new Error("Failed to load document text");
         const docData = await res.json();
         if (!isCancelled) {
-          setData(docData.document);
+          setData(docData.document || docData);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
@@ -405,7 +405,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 const quoteRangeForPage = activePageRanges.find(
                   (r) => r.pageNumber === p.pageNumber
                 );
-                const pageText = (p as any).pageText || "";
+                const pageText =
+                  (p as any).pageText ||
+                  (data?.text ? data.text.slice(p.startOffset, p.endOffset) : "");
                 const sliced = quoteRangeForPage
                   ? sliceTextWithHighlight(pageText, quoteRangeForPage, p.startOffset)
                   : { before: pageText, highlighted: "", after: "" };
