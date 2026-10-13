@@ -6,6 +6,8 @@ import { parseMessageContent } from "@/lib/llm/stream-parser";
 import { QuotePill } from "./QuotePill";
 import { QuoteCard } from "./QuoteCard";
 import { CoverageBanner } from "./CoverageBanner";
+import { AgentTraceUI } from "./AgentTraceUI";
+import type { AgentTraceStep } from "@/lib/agent/loop";
 
 export interface MessageBubbleProps {
   message: StoredMessage;
@@ -96,6 +98,14 @@ export function MessageBubble({
 
         {/* Coverage Banner (when incomplete) */}
         {message.coverage && <CoverageBanner coverage={message.coverage} />}
+
+        {/* Agent Research Trace (C1-C5) */}
+        {Array.isArray((message.stats as any)?.trace) && (
+          <AgentTraceUI
+            trace={(message.stats as any).trace as AgentTraceStep[]}
+            isStreaming={isStreaming}
+          />
+        )}
 
         {/* Message Prose with inline QuotePills */}
         <div className="text-xs leading-relaxed text-stone-800 dark:text-stone-200 space-y-2">

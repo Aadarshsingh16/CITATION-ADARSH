@@ -26,12 +26,13 @@ import {
 import { routeQuestionMode } from "@/lib/chunking/router";
 import { retrieveChunksForQuery, type DocumentWithChunks } from "@/lib/chunking/retrieval";
 import { executeMapPhase, streamReduceAnswer } from "@/lib/chunking/map-reduce";
+import { runAgentResearchLoop } from "@/lib/agent/loop";
 import type { ChunkRecord, Coverage } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { documentIds, question, chatId: requestedChatId, mode: forceMode } = body;
+    const { documentIds, question, chatId: requestedChatId, mode: forceMode, deepResearch } = body;
 
     if (!Array.isArray(documentIds) || documentIds.length === 0) {
       return Response.json(
@@ -114,11 +115,12 @@ export async function POST(request: Request) {
       0
     );
 
+    const effectiveForceMode = deepResearch ? "agent" : forceMode;
     const mode = routeQuestionMode({
       question,
       totalTokens,
       contextBudget,
-      forceMode,
+      forceMode: effectiveForceMode,
     });
 
     // 3. Chat session & messages persistence
@@ -175,7 +177,16 @@ export async function POST(request: Request) {
     });
 
     // Telemetry stats
-    const stats = {
+    const stats: {
+      proposed: number;
+      verified: number;
+      unverified: Record<string, number>;
+      dropped: number;
+      repaired: number;
+      trace?: any[];
+      roundsExecuted?: number;
+      toolCallsExecuted?: number;
+    } = {
       proposed: 0,
       verified: 0,
       unverified: {} as Record<string, number>,
@@ -298,7 +309,43 @@ export async function POST(request: Request) {
           new Set(docRecords.flatMap((d) => d.unreadablePages))
         );
 
-        if (mode === "retrieval") {
+        if (mode === "agent") {
+          // --- AGENT RESEARCH MODE (Part C, Option 2, C1-C7) ---
+          const docListWithChunks: DocumentWithChunks[] = docRecords.map((d) => ({
+            id: d.id,
+            label: d.label,
+            filename: d.filename,
+            text: d.text,
+            chunks: d.chunks,
+            unreadablePages: d.unreadablePages,
+          }));
+
+          const agentResult = await runAgentResearchLoop(
+            question,
+            docListWithChunks,
+            documentIds,
+            {
+              signal: abortController.signal,
+              onProgress: async (step) => {
+                await sendSSE("agent_trace", step);
+              },
+            }
+          );
+
+          finalCoverage = agentResult.coverage;
+          await sendSSE("coverage", finalCoverage);
+
+          // Feed answer to parser so quotes are verified and emitted via SSE
+          for (let i = 0; i < agentResult.answer.length; i += 25) {
+            const chunk = agentResult.answer.slice(i, i + 25);
+            parser.feed(chunk);
+          }
+          parser.end();
+
+          stats.trace = agentResult.trace;
+          stats.roundsExecuted = agentResult.roundsExecuted;
+          stats.toolCallsExecuted = agentResult.toolCallsExecuted;
+        } else if (mode === "retrieval") {
           // --- RETRIEVAL MODE ---
           const docListWithChunks: DocumentWithChunks[] = docRecords.map((d) => ({
             id: d.id,

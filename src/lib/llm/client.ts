@@ -14,9 +14,21 @@ export interface LLMConfig {
   contextBudget: number;
 }
 
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
+  role: "system" | "user" | "assistant" | "tool";
+  content?: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
 }
 
 export interface StreamChatOptions {
@@ -25,6 +37,8 @@ export interface StreamChatOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  tools?: any[];
+  tool_choice?: any;
 }
 
 export function getLLMConfig(): LLMConfig {
@@ -66,7 +80,7 @@ function buildRequestHeaders(apiKey: string): Record<string, string> {
  */
 function boundMessagesToBudget(messages: ChatMessage[], budgetTokens: number): ChatMessage[] {
   const maxChars = Math.max(budgetTokens * 4, 8000);
-  const totalChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  const totalChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
   if (totalChars <= maxChars) return messages;
 
   const systemMsg = messages.find((m) => m.role === "system");
@@ -75,15 +89,17 @@ function boundMessagesToBudget(messages: ChatMessage[], budgetTokens: number): C
   const result: ChatMessage[] = [];
   if (systemMsg) result.push(systemMsg);
 
-  let currentChars = systemMsg ? systemMsg.content.length : 0;
+  let currentChars = systemMsg ? (systemMsg.content?.length || 0) : 0;
   const otherMessages = messages.filter((m) => m !== systemMsg && m !== lastUserMsg);
 
   const keptOthers: ChatMessage[] = [];
   for (let i = otherMessages.length - 1; i >= 0; i--) {
     const msg = otherMessages[i];
-    if (currentChars + msg.content.length + (lastUserMsg ? lastUserMsg.content.length : 0) < maxChars) {
+    const msgLen = msg.content?.length || 0;
+    const lastUserLen = lastUserMsg?.content?.length || 0;
+    if (currentChars + msgLen + lastUserLen < maxChars) {
       keptOthers.unshift(msg);
-      currentChars += msg.content.length;
+      currentChars += msgLen;
     } else {
       break;
     }
@@ -91,11 +107,12 @@ function boundMessagesToBudget(messages: ChatMessage[], budgetTokens: number): C
 
   result.push(...keptOthers);
   if (lastUserMsg && lastUserMsg !== systemMsg) {
+    const userLen = lastUserMsg.content?.length || 0;
     const available = Math.max(maxChars - currentChars, 2000);
-    if (lastUserMsg.content.length > available) {
+    if (userLen > available) {
       result.push({
         ...lastUserMsg,
-        content: lastUserMsg.content.slice(0, available) + "\n\n[...Context truncated to satisfy model token budget...]",
+        content: (lastUserMsg.content || "").slice(0, available) + "\n\n[...Context truncated to satisfy model token budget...]",
       });
     } else {
       result.push(lastUserMsg);
@@ -234,7 +251,7 @@ export async function* streamChatCompletion(
  */
 export async function completeChat(
   options: StreamChatOptions
-): Promise<{ content: string; totalTokens?: number }> {
+): Promise<{ content: string; tool_calls?: ToolCall[]; totalTokens?: number }> {
   const config = getLLMConfig();
   ensureConfigured(config);
 
@@ -252,6 +269,9 @@ export async function completeChat(
       messages: boundedMessages,
       temperature: options.temperature ?? 0,
       max_tokens: options.maxTokens ?? 2048,
+      ...(options.tools && options.tools.length > 0
+        ? { tools: options.tools, tool_choice: options.tool_choice ?? "auto" }
+        : {}),
     }),
   });
 
@@ -267,10 +287,12 @@ export async function completeChat(
   }
 
   const json = await res.json();
-  const content = json?.choices?.[0]?.message?.content || "";
+  const choiceMsg = json?.choices?.[0]?.message;
+  const content = choiceMsg?.content || "";
+  const tool_calls = choiceMsg?.tool_calls as ToolCall[] | undefined;
   const totalTokens = json?.usage?.total_tokens;
 
-  return { content, totalTokens };
+  return { content, tool_calls, totalTokens };
 }
 
 /**

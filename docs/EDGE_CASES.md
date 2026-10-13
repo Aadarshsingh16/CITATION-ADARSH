@@ -83,15 +83,15 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 ## Agent (Part C)
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | Unknown tool name | Structured error returned to model, round counted, trace note | P7 |
-| [ ] | Missing required argument | Structured error naming the missing field | P7 |
-| [ ] | Wrong types or nonsense values (top_k = -5, query = 42) | Rejected by zod, error returned, no crash | P7 |
-| [ ] | Model calls the same tool repeatedly | Caps stop it. Duplicate calls return a cached result with a note | P7 |
-| [ ] | Round cap reached | Forced final answer with "research was limited" notice and partial coverage | P7 |
-| [ ] | Three invalid calls in a row | Loop aborts with an honest partial answer | P7 |
-| [ ] | Tool returns nothing | Result says no matches, model may try a different query within the cap | P7 |
-| [ ] | User presses Stop during tool calls | Loop cancels, trace and partial text kept | P7 |
-| [ ] | Final answer contains an unverifiable quote | Same unverified treatment as any other mode | P7 |
+| [x] | Unknown tool name | Structured error returned to model, round counted, trace note | P7 |
+| [x] | Missing required argument | Structured error naming the missing field | P7 |
+| [x] | Wrong types or nonsense values (top_k = -5, query = 42) | Rejected by zod, error returned, no crash | P7 |
+| [x] | Model calls the same tool repeatedly | Caps stop it. Duplicate calls return a cached result with a note | P7 |
+| [x] | Round cap reached | Forced final answer with "research was limited" notice and partial coverage | P7 |
+| [x] | Three invalid calls in a row | Loop aborts with an honest partial answer | P7 |
+| [x] | Tool returns nothing | Result says no matches, model may try a different query within the cap | P7 |
+| [x] | User presses Stop during tool calls | Loop cancels, trace and partial text kept | P7 |
+| [x] | Final answer contains an unverifiable quote | Same unverified treatment as any other mode | P7 |
 
 ## UI
 | Done | Case | Expected behaviour | Phase |
@@ -113,7 +113,7 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 | [ ] | Rotated or multi-column PDF | Mapping still works because it is index-based, quote verification may fail if extraction order is odd, shown as unverified | P1, P4 |
 | [ ] | Bilingual or Arabic PDF | Does not crash or reject. Arabic matching works when extraction is logical order, documented limitation when visual order | P1, P2 |
 | [ ] | Cheap model paraphrases quotes frequently | Repair pass once, remaining stay unverified, eval reports fabrication and repair rates | P2 |
-| [ ] | Provider does not support native tool calls | JSON action fallback, same agent tests pass | P0, P7 |
+| [x] | Provider does not support native tool calls | JSON action fallback, same agent tests pass | P0, P7 |
 | [ ] | Question asks the model to invent a quote or ignore the document ("make up a clause") | Refuses to invent, answers from the document or says not found | P2 |
 | [ ] | Prompt injection in the contract text | Treated as data, not instructions | P2 |
 | [ ] | Server restart during ingestion | Document marked failed with Retry on next start | P1 |

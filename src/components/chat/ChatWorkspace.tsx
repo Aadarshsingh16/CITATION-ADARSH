@@ -22,6 +22,7 @@ export function ChatWorkspace({
   const [chatHistory, setChatHistory] = useState<StoredChat[]>([]);
   const [showHistoryMenu, setShowHistoryMenu] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
+  const [deepResearch, setDeepResearch] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +150,7 @@ export function ChatWorkspace({
           chatId: currentChatId || undefined,
           documentIds: selectedDocIds,
           question: textToSend,
+          deepResearch,
         }),
       });
 
@@ -200,6 +202,28 @@ export function ChatWorkspace({
                 return m;
               })
             );
+          } else if (eventName === "agent_trace") {
+            setProgressText(`Agent [Round ${parsed.round}]: ${parsed.message}`);
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last && last.role === "assistant") {
+                const currentStats = (last.stats as any) || {};
+                const currentTrace = Array.isArray(currentStats.trace) ? [...currentStats.trace] : [];
+                const existIdx = currentTrace.findIndex((t: any) => t.id === parsed.id);
+                if (existIdx >= 0) {
+                  currentTrace[existIdx] = parsed;
+                } else {
+                  currentTrace.push(parsed);
+                }
+                next[next.length - 1] = {
+                  ...last,
+                  mode: "agent",
+                  stats: { ...currentStats, trace: currentTrace },
+                };
+              }
+              return next;
+            });
           } else if (eventName === "progress") {
             setProgressText(parsed.step || `Analyzing (${parsed.percent}%)...`);
           } else if (eventName === "token") {
@@ -528,6 +552,25 @@ export function ChatWorkspace({
               </svg>
             </button>
           )}
+        </div>
+
+        {/* Deep Research Toggle (Part C, C7, D-037) */}
+        <div className="max-w-3xl mx-auto flex items-center justify-between pt-2 px-1">
+          <label className="flex items-center gap-2 cursor-pointer text-xs select-none group">
+            <input
+              type="checkbox"
+              checked={deepResearch}
+              onChange={(e) => setDeepResearch(e.target.checked)}
+              disabled={isStreaming}
+              className="w-3.5 h-3.5 rounded text-indigo-600 border-stone-300 focus:ring-indigo-500 cursor-pointer"
+            />
+            <span className="font-semibold text-stone-700 group-hover:text-indigo-600 transition">
+              ⚡ Deep Research Mode
+            </span>
+            <span className="text-[11px] text-stone-400 hidden sm:inline">
+              (Multi-round autonomous research with tools: search_document, get_section, list_clauses)
+            </span>
+          </label>
         </div>
       </div>
     </div>
