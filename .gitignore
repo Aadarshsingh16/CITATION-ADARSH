@@ -51,3 +51,6 @@ postgres_data/
 ASSIGNMENT*.pdf
 .agents/
 graphify-out/
+docs/design-reference/
+refference_design/
+
