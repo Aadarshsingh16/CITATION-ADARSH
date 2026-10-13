@@ -1,104 +1,110 @@
+/* Contract Analyser design tokens (v3 revamp).
+   Rule: components use these tokens only. No ad hoc hex values. */
 @import "tailwindcss";
 
 :root {
-  /* Canvas and panels */
-  --canvas: #F6F8FF;
-  --panel: #FFFFFF;
-  --surface-1: #F9FAFB;
-  --surface-2: #F3F4F6;
-  --border: #E5E7EB;
-  --border-strong: #D1D5DB;
-  --ink: #111827;
-  --ink-2: #374151;
-  --ink-3: #4B5563;
-  --muted: #6B7280;
+  /* Ink and canvas: a cool violet-tinted neutral, not a warm cream and not a flat gray */
+  --ink:        #17142B;   /* text, dark buttons, the one "black" */
+  --ink-2:      #3B3855;   /* body text */
+  --ink-3:      #5A5775;   /* secondary text, icons */
+  --muted:      #6E6B87;   /* meta text (4.5:1 on --mist, check on --sunken) */
+  --mist:       #F1F0F8;   /* app canvas */
+  --sheet:      #FFFFFF;   /* main surfaces */
+  --sheet-2:    #F7F7FC;   /* insets, passage blocks, table header */
+  --sunken:     #ECEBF5;   /* wells, hover fill, unread spine cells */
+  --desk:       #E4E2EF;   /* the reading desk behind rendered PDF pages */
+  --line:       #E3E1EF;
+  --line-strong:#CFCCE0;
 
-  /* Primary */
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-soft: #EFF6FF;
-  --primary-tint: #DBEAFE;
+  /* Meaning colours. Each state is a pair: soft background + strong foreground. */
+  --seal:       #0B7A5F;   --seal-soft:   #DDF3EA;   /* verified, read, brand green */
+  --stamp:      #A8480A;   --stamp-soft:  #FCE9D2;   /* unverified, needs a look (amber, never red) */
+  --indigo:     #4B3FD6;   --indigo-soft: #E8E6FB;   /* repaired, focus ring, selection */
+  --info:       #2A5C9A;   --info-soft:   #E1ECF9;   /* coverage notices, tips */
+  --redline:    #B5224E;   --redline-soft:#FCE3EA;   /* removed text in comparisons only */
+  --danger:     #B42318;   --danger-soft: #FEE4E2;   /* real failures only */
+  --marker:     #FFD84D;   --marker-soft: #FFF0A8;   /* highlighter: active and other occurrences */
 
-  /* State colours (each is a pair: background strip, foreground text and icon) */
-  --state-verified-bg: #DCFCE7;
-  --state-verified-fg: #15803D;
+  /* Shape: radius by role, not one radius everywhere */
+  --r-mark: 6px;           /* pills, chips, inline marks */
+  --r-control: 10px;       /* buttons, inputs */
+  --r-pop: 14px;           /* popovers, hovercards, dialogs */
+  --r-sheet: 18px;         /* big surfaces */
+  --r-window: 24px;        /* the app window */
 
-  --state-unverified-bg: #FEF3C7;
-  --state-unverified-fg: #B45309;
+  /* Depth: borders carry structure, shadows only for things that float */
+  --shadow-float: 0 1px 2px rgba(23,20,43,.06), 0 10px 28px -6px rgba(23,20,43,.16);
+  --shadow-bar:   0 1px 0 rgba(23,20,43,.04), 0 6px 18px -8px rgba(23,20,43,.22);
 
-  --state-repaired-bg: #EDE9FE;
-  --state-repaired-fg: #6D28D9;
+  --ease: cubic-bezier(.2,.7,.2,1);
 
-  --state-info-bg: #DBEAFE;
-  --state-info-fg: #1D4ED8;
+  /* Compatibility aliases */
+  --canvas: var(--mist);
+  --panel: var(--sheet);
+  --surface-1: var(--sheet-2);
+  --surface-2: var(--sunken);
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --primary: var(--ink);
+  --primary-hover: #262244;
+  --primary-soft: var(--indigo-soft);
+  --primary-tint: var(--indigo-soft);
 
-  --state-pending-bg: #E5E7EB;
-  --state-pending-fg: #4B5563;
+  --state-verified-bg: var(--seal-soft);
+  --state-verified-fg: var(--seal);
+  --state-unverified-bg: var(--stamp-soft);
+  --state-unverified-fg: var(--stamp);
+  --state-repaired-bg: var(--indigo-soft);
+  --state-repaired-fg: var(--indigo);
+  --state-info-bg: var(--info-soft);
+  --state-info-fg: var(--info);
+  --state-pending-bg: var(--sunken);
+  --state-pending-fg: var(--muted);
+  --state-danger-bg: var(--danger-soft);
+  --state-danger-fg: var(--danger);
 
-  --state-danger-bg: #FEE2E2;
-  --state-danger-fg: #B91C1C;
+  --sig-high-bg: #FFE6D0;
+  --sig-high-fg: #B4440A;
+  --sig-medium-bg: #FFF0A8;
+  --sig-medium-fg: #8A6A00;
+  --sig-low-bg: var(--info-soft);
+  --sig-low-fg: var(--info);
+  --sig-cosmetic-bg: var(--sunken);
+  --sig-cosmetic-fg: var(--muted);
 
-  /* Significance (comparison) */
-  --sig-high-bg: #FFEDD5;
-  --sig-high-fg: #C2410C;
-
-  --sig-medium-bg: #FEF9C3;
-  --sig-medium-fg: #A16207;
-
-  --sig-low-bg: #DBEAFE;
-  --sig-low-fg: #1D4ED8;
-
-  --sig-cosmetic-bg: #F3F4F6;
-  --sig-cosmetic-fg: #4B5563;
-
-  /* Highlights and diffs */
-  --hl-active: #FDE68A;
-  --hl-other: #BFDBFE;
-  --diff-add: #DCFCE7;
-  --diff-del: #FEE2E2;
-
-  /* Backward compatibility aliases */
-  --bg: var(--canvas);
-  --surface: var(--panel);
-  --text: var(--ink);
-  --text-muted: var(--muted);
-  --accent: var(--primary);
-  --accent-hover: var(--primary-hover);
-  --verified: var(--state-verified-fg);
-  --verified-bg: var(--state-verified-bg);
-  --unverified: var(--state-unverified-fg);
-  --unverified-bg: var(--state-unverified-bg);
-  --partial: var(--state-info-fg);
-  --partial-bg: var(--state-info-bg);
-  --highlight: var(--hl-active);
-  --highlight-alt: var(--hl-other);
-  --danger: var(--state-danger-fg);
-  --danger-bg: var(--state-danger-bg);
+  --hl-active: var(--marker);
+  --hl-other: var(--marker-soft);
+  --diff-add: var(--seal-soft);
+  --diff-del: var(--redline-soft);
 }
 
-body {
-  background-color: var(--canvas);
-  color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  -webkit-font-smoothing: antialiased;
+@theme inline {
+  --color-ink: var(--ink);        --color-ink-2: var(--ink-2);   --color-ink-3: var(--ink-3);
+  --color-muted: var(--muted);    --color-mist: var(--mist);     --color-sheet: var(--sheet);
+  --color-sheet-2: var(--sheet-2);--color-sunken: var(--sunken); --color-desk: var(--desk);
+  --color-line: var(--line);      --color-line-strong: var(--line-strong);
+  --color-seal: var(--seal);      --color-seal-soft: var(--seal-soft);
+  --color-stamp: var(--stamp);    --color-stamp-soft: var(--stamp-soft);
+  --color-indigo: var(--indigo);  --color-indigo-soft: var(--indigo-soft);
+  --color-info: var(--info);      --color-info-soft: var(--info-soft);
+  --color-redline: var(--redline);--color-redline-soft: var(--redline-soft);
+  --color-danger: var(--danger);  --color-danger-soft: var(--danger-soft);
+  --color-marker: var(--marker);  --color-marker-soft: var(--marker-soft);
+  --font-sans: var(--font-ui), "Noto Sans Arabic", system-ui, sans-serif;
+  --font-reading: var(--font-read), "Noto Naskh Arabic", Georgia, serif;
+  --radius-mark: var(--r-mark); --radius-control: var(--r-control);
+  --radius-pop: var(--r-pop);   --radius-sheet: var(--r-sheet); --radius-window: var(--r-window);
 }
 
-/* Document & contract text styled in readable legal serif (DESIGN.md) */
-.font-contract, .font-serif-doc {
-  font-family: "Source Serif 4", "Newsreader", "Georgia", "Cambria", "Times New Roman", Times, serif;
-  line-height: 1.7;
-}
+html { background: var(--mist); color: var(--ink-2); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; }
+body { font-feature-settings: "tnum" 1, "cv11" 1; -webkit-font-smoothing: antialiased; margin: 0; padding: 0; }
+h1, h2, h3 { color: var(--ink); font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+.reading, .font-contract, .font-serif-doc { font-family: var(--font-reading); font-size: 17px; line-height: 1.7; color: var(--ink); max-width: 66ch; }
+:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; border-radius: 4px; }
 
-/* Active PDF highlight blend */
-.pdf-highlight-active {
-  background-color: var(--hl-active);
-  mix-blend-mode: multiply;
-}
-
-.pdf-highlight-other {
-  background-color: var(--hl-other);
-  opacity: 0.6;
-  mix-blend-mode: multiply;
-}
+/* The highlighter sweep: marker draws across the passage when a quote opens */
+@keyframes sweep { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
+.hl { background-image: linear-gradient(var(--marker), var(--marker)); background-repeat: no-repeat; background-size: 100% 100%;
+      animation: sweep .45s var(--ease) both; mix-blend-mode: multiply; }
+.hl-other { background: var(--marker-soft); mix-blend-mode: multiply; }
+@media (prefers-reduced-motion: reduce) { .hl { animation: none; } * { scroll-behavior: auto !important; } }
