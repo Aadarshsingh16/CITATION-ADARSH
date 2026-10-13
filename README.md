@@ -142,14 +142,16 @@ npm run build
 - [x] Evaluation harness (`npm run eval`) with 12/12 passing benchmark questions.
 
 ### Not Finished / Future Roadmap
-- [ ] **OCR for Scanned Documents**: Documents lacking a digital text layer are rejected at the quality gate rather than processed via optical character recognition.
-- [ ] **Multi-Tenant Authentication**: The system operates in single-tenant mode without user accounts or role-based access control.
-- [ ] **Export to Annotated PDF**: Currently, highlights are rendered interactively in the web browser; exporting modified PDF files with embedded PDF highlight annotations is not yet implemented.
+*(Detailed architectural blueprints and implementation specifications are documented in [`docs/FUTURE_ROADMAP.md`](file:///c:/projects/Citation-assignment/docs/FUTURE_ROADMAP.md))*
+- [ ] **OCR for Scanned Documents**: Documents lacking a digital text layer are rejected at the quality gate (`D-021`, `D-022`) rather than processed via optical character recognition.
+- [ ] **Multi-Tenant Authentication**: The system operates in single-tenant mode without user accounts or role-based access control (`D-033`).
+- [ ] **Export to Annotated PDF**: Currently, highlights are rendered interactively on the client PDF.js canvas; exporting modified PDF files with embedded ISO-standard highlight annotation dictionaries is not yet implemented.
 
 ---
 
 ## Detailed Notes & Walkthrough
 - [Architecture & Invariants](file:///c:/projects/Citation-assignment/docs/ARCHITECTURE.md)
+- [Future Technical Roadmap](file:///c:/projects/Citation-assignment/docs/FUTURE_ROADMAP.md)
 - [Submission Reflection Note](file:///c:/projects/Citation-assignment/docs/NOTE.md)
 - [Video Demo Script](file:///c:/projects/Citation-assignment/docs/DEMO_SCRIPT.md)
 - [Submission Checklist & Claims Audit](file:///c:/projects/Citation-assignment/docs/SUBMISSION_CHECKLIST.md)
