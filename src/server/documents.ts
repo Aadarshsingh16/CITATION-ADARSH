@@ -14,7 +14,6 @@ let staleSweepExecuted = false;
  * Sweeps any interrupted jobs left in progress (D-040).
  */
 export async function sweepStaleJobs(): Promise<number> {
-  if (!process.env.DATABASE_URL) return 0;
   try {
     const staleStatuses = ["uploading", "extracting", "indexing"] as const;
     const staleDocs = await db

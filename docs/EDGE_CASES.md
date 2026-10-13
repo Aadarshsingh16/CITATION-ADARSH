@@ -107,20 +107,20 @@ For each case: expected behaviour, and the phase that handles it. Tick the box o
 # Additions (audit round 1)
 | Done | Case | Expected behaviour | Phase |
 |---|---|---|---|
-| [ ] | pdf.js text-layer span count differs from stored item count | Fall back to canonical text view for that page and log it | P4 |
-| [ ] | Highlight begins or ends in the middle of a text item | Item is split, only the matched characters are marked | P4 |
-| [ ] | Quote spans two pages in the rendered PDF | Both pages highlighted, scroll goes to the first, counter treats it as one occurrence | P4 |
-| [ ] | Rotated or multi-column PDF | Mapping still works because it is index-based, quote verification may fail if extraction order is odd, shown as unverified | P1, P4 |
-| [ ] | Bilingual or Arabic PDF | Does not crash or reject. Arabic matching works when extraction is logical order, documented limitation when visual order | P1, P2 |
-| [ ] | Cheap model paraphrases quotes frequently | Repair pass once, remaining stay unverified, eval reports fabrication and repair rates | P2 |
+| [x] | pdf.js text-layer span count differs from stored item count | Fall back to canonical text view for that page and log it | P4 |
+| [x] | Highlight begins or ends in the middle of a text item | Item is split, only the matched characters are marked | P4 |
+| [x] | Quote spans two pages in the rendered PDF | Both pages highlighted, scroll goes to the first, counter treats it as one occurrence | P4 |
+| [x] | Rotated or multi-column PDF | Mapping still works because it is index-based, quote verification may fail if extraction order is odd, shown as unverified | P1, P4 |
+| [x] | Bilingual or Arabic PDF | Does not crash or reject. Arabic matching works when extraction is logical order, documented limitation when visual order | P1, P2 |
+| [x] | Cheap model paraphrases quotes frequently | Repair pass once, remaining stay unverified, eval reports fabrication and repair rates | P2 |
 | [x] | Provider does not support native tool calls | JSON action fallback, same agent tests pass | P0, P7 |
-| [ ] | Question asks the model to invent a quote or ignore the document ("make up a clause") | Refuses to invent, answers from the document or says not found | P2 |
-| [ ] | Prompt injection in the contract text | Treated as data, not instructions | P2 |
-| [ ] | Server restart during ingestion | Document marked failed with Retry on next start | P1 |
-| [ ] | Public URL abused or loop spends tokens | Rate limits and daily ceiling stop it with a friendly message | P1, P8 |
-| [ ] | Host sleeps and the first request is slow | Loading state explains it, README notes it | P0, P8 |
-| [ ] | Summary in comparison mentions a value not in the documents | Summary guard replaces it with a templated one | P6 |
-| [ ] | Comparison inputs uploaded on the comparison screen are still processing | Wait with progress, then run | P6 |
-| [ ] | Multi-doc answer lists documents separately instead of comparing | Prompt requires topic-by-topic structure, eval checks for at least two doc labels per topic | P5 |
-| [ ] | Reviewer's long contract has unusual structure (no numbering, scanned appendix) | Paragraph chunking fallback, unreadable pages recorded, coverage banner | P1, P3 |
-| [ ] | Map-reduce takes too long | Progress shown, concurrency tuned, user can Stop | P3 |
+| [x] | Question asks the model to invent a quote or ignore the document ("make up a clause") | Refuses to invent, answers from the document or says not found | P2 |
+| [x] | Prompt injection in the contract text | Treated as data, not instructions | P2 |
+| [x] | Server restart during ingestion | Document marked failed with Retry on next start | P1, P8 |
+| [x] | Public URL abused or loop spends tokens | Rate limits and daily ceiling stop it with a friendly message | P1, P8 |
+| [x] | Host sleeps and the first request is slow | Loading state explains it, README notes it | P0, P8 |
+| [x] | Summary in comparison mentions a value not in the documents | Summary guard replaces it with a templated one | P6 |
+| [x] | Comparison inputs uploaded on the comparison screen are still processing | Wait with progress, then run | P6 |
+| [x] | Multi-doc answer lists documents separately instead of comparing | Prompt requires topic-by-topic structure, eval checks for at least two doc labels per topic | P5 |
+| [x] | Reviewer's long contract has unusual structure (no numbering, scanned appendix) | Paragraph chunking fallback, unreadable pages recorded, coverage banner | P1, P3 |
+| [x] | Map-reduce takes too long | Progress shown, concurrency tuned, user can Stop | P3 |

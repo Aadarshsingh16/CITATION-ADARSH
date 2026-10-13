@@ -9,9 +9,22 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { documents, pages } from "@/server/db/schema";
 import { compareDocuments } from "@/lib/compare";
+import { checkRateLimit, checkDailyTokenCeiling } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    // Rate limit & Daily Token Ceiling Check (D-039)
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rlCheck = checkRateLimit(clientIp);
+    if (!rlCheck.allowed) {
+      return NextResponse.json({ error: rlCheck.reason }, { status: 429 });
+    }
+
+    const ceilingCheck = checkDailyTokenCeiling(2000);
+    if (!ceilingCheck.allowed) {
+      return NextResponse.json({ error: ceilingCheck.reason }, { status: 429 });
+    }
+
     const body = await req.json();
     const { docAId, docBId } = body;
 

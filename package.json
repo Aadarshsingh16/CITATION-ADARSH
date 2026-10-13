@@ -14,7 +14,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "llm:check": "tsx scripts/llm-check.ts",
-    "test": "tsx tests/stream-parser.test.ts && tsx tests/quotes.test.ts && tsx tests/phase1-ingestion.test.ts && tsx tests/phase2-chat.test.ts && tsx tests/phase3-large-docs.test.ts && tsx tests/phase4-citations.test.ts && tsx tests/phase5-multi-doc.test.ts && tsx tests/phase6-compare.test.ts && tsx tests/phase7-agent.test.ts"
+    "eval": "tsx --env-file=.env evals/run.ts",
+    "test": "tsx tests/stream-parser.test.ts && tsx tests/quotes.test.ts && tsx tests/phase1-ingestion.test.ts && tsx tests/phase2-chat.test.ts && tsx tests/phase3-large-docs.test.ts && tsx tests/phase4-citations.test.ts && tsx tests/phase5-multi-doc.test.ts && tsx tests/phase6-compare.test.ts && tsx tests/phase7-agent.test.ts && tsx tests/phase8-polish.test.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",

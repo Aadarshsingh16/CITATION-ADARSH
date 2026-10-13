@@ -30,7 +30,20 @@ export async function POST() {
     const amendmentBuffer = createSyntheticPdf(amendmentPages);
     await createDocumentFromUpload("Amendment_No_1_Services_Agreement.pdf", amendmentBuffer);
 
-    return NextResponse.json({ success: true, count: 3 }, { status: 200 });
+    // 4. Comprehensive Enterprise Framework Agreement (125 pages for large doc & coverage tests, D-042)
+    const longPages: string[] = [
+      `GLOBAL ENTERPRISE FRAMEWORK AGREEMENT\n\nThis Global Enterprise Framework Agreement ("Framework") is dated March 1, 2024, by and between Apex Global Solutions LLC and Horizon Enterprises PJSC.\n\nPREAMBLE\nThis Agreement establishes the overarching governance, terms, conditions, performance metrics, and service schedules applicable to global operations across all jurisdictions.`,
+    ];
+
+    for (let p = 2; p <= 125; p++) {
+      longPages.push(
+        `SCHEDULE ${p - 1}: OPERATIONAL SPECIFICATIONS AND CLAUSES\n\nSection ${p}.1 Service Level Commitments: Provider guarantees 99.9% uptime availability during standard operating hours.\nSection ${p}.2 Incident Management: Priority 1 incidents shall receive an initial diagnostic response within fifteen (15) minutes.\nSection ${p}.3 Governance and Compliance: Both parties shall maintain regulatory compliance with all applicable standards.\nSection ${p}.4 Audit Rights: Customer retains the right to audit operational logs with five (5) days advance written notice.`
+      );
+    }
+    const longBuffer = createSyntheticPdf(longPages);
+    await createDocumentFromUpload("Global_Enterprise_Framework_125p.pdf", longBuffer);
+
+    return NextResponse.json({ success: true, count: 4 }, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });

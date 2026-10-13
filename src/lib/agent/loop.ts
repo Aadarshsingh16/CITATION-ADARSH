@@ -75,7 +75,7 @@ Available Tools:
 Rules:
 1. Conduct targeted lookups to gather sufficient evidence before answering.
 2. NEVER guess or invent clause numbers, percentages, financial amounts, or terms.
-3. Every factual claim in your final answer MUST quote the document using exact tags: <q doc="docId" p="page">exact verbatim text</q>.
+3. Every factual claim in your final answer MUST quote the document using exact tags: <q doc="docId" p="page">exact verbatim text</q>. Quote at least 15 characters of verbatim text, and do not include extra quotation marks inside the tag.
 4. If a clause or provision does not exist after thorough searching, state honestly that it was not found. Do not invent an answer.
 5. When you have sufficient evidence, provide your comprehensive final answer. Do NOT make unnecessary tool calls.`;
 }

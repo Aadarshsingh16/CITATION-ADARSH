@@ -27,10 +27,23 @@ import { routeQuestionMode } from "@/lib/chunking/router";
 import { retrieveChunksForQuery, type DocumentWithChunks } from "@/lib/chunking/retrieval";
 import { executeMapPhase, streamReduceAnswer } from "@/lib/chunking/map-reduce";
 import { runAgentResearchLoop } from "@/lib/agent/loop";
+import { checkRateLimit, checkDailyTokenCeiling, recordTokenUsage } from "@/lib/rate-limit";
 import type { ChunkRecord, Coverage } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
+    // Rate limit & Daily Token Ceiling Check (D-039)
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rlCheck = checkRateLimit(clientIp);
+    if (!rlCheck.allowed) {
+      return Response.json({ error: rlCheck.reason }, { status: 429 });
+    }
+
+    const ceilingCheck = checkDailyTokenCeiling(2000);
+    if (!ceilingCheck.allowed) {
+      return Response.json({ error: ceilingCheck.reason }, { status: 429 });
+    }
+
     const body = await request.json();
     const { documentIds, question, chatId: requestedChatId, mode: forceMode, deepResearch } = body;
 

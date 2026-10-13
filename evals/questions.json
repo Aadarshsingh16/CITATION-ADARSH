@@ -1,9 +1,86 @@
 [
   {
-    "id": "q-001",
-    "doc": "sample.pdf",
-    "question": "What is the governing law?",
+    "id": "q-01",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "What is the governing law of the agreement?",
     "kind": "present",
-    "expect": ["governing law"]
+    "expect": ["laws of the Emirate of Dubai", "United Arab Emirates"]
+  },
+  {
+    "id": "q-02",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "What is the notice period required to terminate for convenience?",
+    "kind": "present",
+    "expect": ["thirty (30) days", "written notice"]
+  },
+  {
+    "id": "q-03",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "What are the consulting fees for the initial deliverables?",
+    "kind": "present",
+    "expect": ["AED 250,000"]
+  },
+  {
+    "id": "q-04",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "Is there a 50% penalty on late delivery of milestones?",
+    "kind": "absent",
+    "expect": ["not_found"]
+  },
+  {
+    "id": "q-05",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "Does the contract mandate dispute resolution via SIAC arbitration in Singapore?",
+    "kind": "absent",
+    "expect": ["not_found"]
+  },
+  {
+    "id": "q-06",
+    "doc": "Mutual_NDA_Standard.pdf",
+    "question": "How long does the confidentiality obligation endure after disclosure?",
+    "kind": "present",
+    "expect": ["three (3) years"]
+  },
+  {
+    "id": "q-07",
+    "doc": "Mutual_NDA_Standard.pdf",
+    "question": "Does the agreement permit payments in Bitcoin or cryptocurrency?",
+    "kind": "absent",
+    "expect": ["not_found"]
+  },
+  {
+    "id": "q-08",
+    "doc": "Amendment_No_1_Services_Agreement.pdf",
+    "question": "What is the updated termination notice period in Amendment No 1?",
+    "kind": "present",
+    "expect": ["sixty (60) days"]
+  },
+  {
+    "id": "q-09",
+    "doc": "Amendment_No_1_Services_Agreement.pdf",
+    "question": "What is the updated contract amount in Amendment No 1?",
+    "kind": "present",
+    "expect": ["AED 350,000"]
+  },
+  {
+    "id": "q-10",
+    "doc": "Global_Enterprise_Framework_125p.pdf",
+    "question": "What is the service level uptime availability guarantee across schedules?",
+    "kind": "existence_large",
+    "expect": ["99.9% uptime availability"]
+  },
+  {
+    "id": "q-11",
+    "doc": "multi",
+    "question": "How do the termination notice periods differ between the 2024 MSA and Amendment No 1?",
+    "kind": "multi_doc",
+    "expect": ["thirty (30) days", "sixty (60) days"]
+  },
+  {
+    "id": "q-12",
+    "doc": "Master_Services_Agreement_2024.pdf",
+    "question": "Research the exact cure period for material breach using tools.",
+    "kind": "agent",
+    "expect": ["fourteen (14) days"]
   }
 ]

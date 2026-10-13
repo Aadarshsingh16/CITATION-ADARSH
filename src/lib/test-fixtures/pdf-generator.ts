@@ -21,12 +21,34 @@ export function createSyntheticPdf(pages: string[]): Buffer {
     const contentNum = pageNum + 1;
     const pageText = pages[i];
 
-    // Build content stream
-    const lines = pageText.split("\n");
+    // Build content stream with word-wrapping to prevent glyph clipping past page boundaries
+    const rawLines = pageText.split("\n");
+    const lines: string[] = [];
+    for (const raw of rawLines) {
+      if (raw.length <= 65) {
+        lines.push(raw);
+      } else {
+        const words = raw.split(" ");
+        let current = "";
+        for (const w of words) {
+          if (current && (current + " " + w).length > 65) {
+            lines.push(current);
+            current = w;
+          } else {
+            current = current ? current + " " + w : w;
+          }
+        }
+        if (current) lines.push(current);
+      }
+    }
+
     let streamBody = "BT\n/F1 12 Tf\n";
     let isFirst = true;
     for (const line of lines) {
-      if (!line) continue;
+      if (!line) {
+        streamBody += `0 -16 Td () Tj\n`;
+        continue;
+      }
       const escaped = line.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
       if (isFirst) {
         streamBody += `50 750 Td (${escaped}) Tj\n`;
