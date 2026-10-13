@@ -57,7 +57,7 @@ export function getQuoteState(
 
   let locationText = "In document";
   if (matches && matches.length > 0) {
-    locationText = `Offset ${matches[0].start}..${matches[0].end}`;
+    locationText = matches.length === 1 ? "Section match" : `${matches.length} section matches`;
   }
 
   return {

@@ -43,6 +43,158 @@ function getCategoryIcon(title?: string) {
   return <CircleEllipsis className="w-3.5 h-3.5 text-[#6E6B87]" />;
 }
 
+interface DiffPart {
+  type: "equal" | "delete" | "insert";
+  value: string;
+}
+
+function computeWordDiff(textA: string, textB: string): DiffPart[] {
+  if (!textA && textB) return [{ type: "insert", value: textB }];
+  if (textA && !textB) return [{ type: "delete", value: textA }];
+  if (!textA && !textB) return [];
+  if (textA === textB) return [{ type: "equal", value: textA }];
+
+  const tokensA = textA.match(/\S+|\s+/g) || [];
+  const tokensB = textB.match(/\S+|\s+/g) || [];
+
+  const m = tokensA.length;
+  const n = tokensB.length;
+  if (m * n > 250000) {
+    return [
+      { type: "delete", value: textA },
+      { type: "insert", value: textB },
+    ];
+  }
+
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      if (tokensA[i] === tokensB[j]) {
+        dp[i + 1][j + 1] = dp[i][j] + 1;
+      } else {
+        dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+  }
+
+  const diff: DiffPart[] = [];
+  let i = m;
+  let j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && tokensA[i - 1] === tokensB[j - 1]) {
+      diff.unshift({ type: "equal", value: tokensA[i - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      diff.unshift({ type: "insert", value: tokensB[j - 1] });
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+      diff.unshift({ type: "delete", value: tokensA[i - 1] });
+      i--;
+    }
+  }
+
+  const combined: DiffPart[] = [];
+  for (const item of diff) {
+    const prev = combined[combined.length - 1];
+    if (prev && prev.type === item.type) {
+      prev.value += item.value;
+    } else {
+      combined.push({ ...item });
+    }
+  }
+  return combined;
+}
+
+function DiffText({
+  textA,
+  textB,
+  mode,
+}: {
+  textA: string;
+  textB: string;
+  mode: "inline" | "earlier" | "amended";
+}) {
+  const diff = React.useMemo(() => computeWordDiff(textA, textB), [textA, textB]);
+
+  if (diff.length === 0) return null;
+
+  if (mode === "earlier") {
+    return (
+      <span>
+        {diff.map((part, idx) => {
+          if (part.type === "insert") return null;
+          if (part.type === "delete") {
+            return (
+              <span
+                key={idx}
+                className="line-through text-[#B5224E] bg-[#FCE3EA] px-0.5 rounded-[2px] font-medium"
+                title="Removed in amended version"
+              >
+                {part.value}
+              </span>
+            );
+          }
+          return <span key={idx}>{part.value}</span>;
+        })}
+      </span>
+    );
+  }
+
+  if (mode === "amended") {
+    return (
+      <span>
+        {diff.map((part, idx) => {
+          if (part.type === "delete") return null;
+          if (part.type === "insert") {
+            return (
+              <span
+                key={idx}
+                className="underline decoration-2 text-[#0B7A5F] bg-[#DDF3EA] px-0.5 rounded-[2px] font-semibold"
+                title="Added in amended version"
+              >
+                {part.value}
+              </span>
+            );
+          }
+          return <span key={idx}>{part.value}</span>;
+        })}
+      </span>
+    );
+  }
+
+  // Inline unified diff
+  return (
+    <span>
+      {diff.map((part, idx) => {
+        if (part.type === "delete") {
+          return (
+            <span
+              key={idx}
+              className="line-through text-[#B5224E] bg-[#FCE3EA] px-0.5 rounded-[2px] font-medium mr-0.5"
+              title="Removed"
+            >
+              {part.value}
+            </span>
+          );
+        }
+        if (part.type === "insert") {
+          return (
+            <span
+              key={idx}
+              className="underline decoration-2 text-[#0B7A5F] bg-[#DDF3EA] px-0.5 rounded-[2px] font-semibold mr-0.5"
+              title="Added"
+            >
+              {part.value}
+            </span>
+          );
+        }
+        return <span key={idx}>{part.value}</span>;
+      })}
+    </span>
+  );
+}
+
 export function CompareScreen({
   documents,
   initialDocAId,
@@ -56,8 +208,10 @@ export function CompareScreen({
   const [error, setError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<SignificanceLevel | "all">("all");
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"order" | "significance">("order");
+  const [viewMode, setViewMode] = useState<"side_by_side" | "inline">("side_by_side");
 
   const runComparison = async (idA: string, idB: string) => {
     if (!idA || !idB || idA === idB) return;
@@ -77,7 +231,9 @@ export function CompareScreen({
 
       const data = await res.json();
       setResult(data.comparison);
-      setSelectedIdx(0);
+      if (data.comparison?.comparisons?.[0]?.id) {
+        setActiveId(data.comparison.comparisons[0].id);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -97,7 +253,21 @@ export function CompareScreen({
     setDocBId(temp);
   };
 
-  const filtered = (result?.comparisons || []).filter((c) => {
+  const sortedComparisons = React.useMemo(() => {
+    const list = [...(result?.comparisons || [])];
+    if (sortBy === "significance") {
+      const order: Record<SignificanceLevel, number> = {
+        high: 0,
+        medium: 1,
+        low: 2,
+        cosmetic: 3,
+      };
+      list.sort((a, b) => order[a.significance] - order[b.significance]);
+    }
+    return list;
+  }, [result, sortBy]);
+
+  const filtered = sortedComparisons.filter((c) => {
     if (filter !== "all" && c.significance !== filter) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -111,7 +281,22 @@ export function CompareScreen({
   });
 
   const activeComparison: ClauseComparison | undefined =
-    filtered[selectedIdx] || filtered[0];
+    filtered.find((c) => c.id === activeId) || filtered[0];
+
+  const headlineSummary = React.useMemo(() => {
+    if (!result) return "";
+    const total = result.comparisons.length;
+    if (total === 0) return "No differences were detected between the two contract versions.";
+    const high = result.stats.high;
+    const med = result.stats.medium;
+    const highItems = result.comparisons
+      .filter((c) => c.significance === "high")
+      .map((c) => c.clauseB?.title || c.clauseA?.title || c.summary.slice(0, 35))
+      .filter(Boolean);
+    const highlightText =
+      highItems.length > 0 ? ` Key substantive revisions affect ${highItems.slice(0, 3).join(", ")}.` : "";
+    return `Comparison between ${result.docA.title} and ${result.docB.title} identified ${total} clause differences, including ${high} high-significance and ${med} medium-significance revisions.${highlightText}`;
+  }, [result]);
 
   // Build change map Spine ticks
   const spineTicks: SpineTick[] = (result?.comparisons || []).map((c, i) => {
@@ -223,9 +408,15 @@ export function CompareScreen({
           )}
         </div>
 
-        {/* Change Map Timeline with clear labels */}
+        {/* Change Map Timeline with headline summary and clear labels */}
         {result && (
-          <div className="pt-2 border-t border-[#F1F0F8] space-y-1.5">
+          <div className="pt-2 border-t border-[#F1F0F8] space-y-2">
+            {headlineSummary && (
+              <p className="font-reading text-[13px] leading-relaxed text-[#17142B] bg-[#F7F7FC] px-3 py-2 rounded-[8px] border border-[#E3E1EF]">
+                {headlineSummary}
+              </p>
+            )}
+
             <div className="flex items-center justify-between text-[11px] text-[#6E6B87]">
               <span className="font-semibold text-[#17142B]">
                 Contract Change Timeline (Click any tick to inspect clause):
@@ -241,11 +432,17 @@ export function CompareScreen({
               cells={result.comparisons.length || 30}
               ticks={spineTicks}
               thickness={12}
-              onSelect={(idx) => setSelectedIdx(idx)}
+              onSelect={(idx) => {
+                const target = result.comparisons[idx];
+                if (target) {
+                  setFilter("all");
+                  setActiveId(target.id);
+                }
+              }}
             />
 
-            {/* Filter Tabs & Search */}
-            <div className="flex items-center justify-between gap-3 pt-1">
+            {/* Filter Tabs, Sort Control & Search */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <div className="flex items-center gap-1.5 text-[11.5px]">
                 <button
                   type="button"
@@ -294,15 +491,29 @@ export function CompareScreen({
                 </button>
               </div>
 
-              <div className="relative">
-                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6E6B87]" />
-                <input
-                  type="text"
-                  placeholder="Search clause text..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-7 pr-2.5 py-0.5 bg-[#F7F7FC] border border-[#E3E1EF] rounded-[6px] text-[11.5px] text-[#17142B] focus:outline-none focus:ring-1 focus:ring-[#4B3FD6] w-48"
-                />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-[11px] text-[#6E6B87]">
+                  <span>Sort:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "order" | "significance")}
+                    className="px-2 py-0.5 rounded-[6px] bg-[#F7F7FC] border border-[#E3E1EF] text-[11px] text-[#17142B] cursor-pointer"
+                  >
+                    <option value="order">Document Order</option>
+                    <option value="significance">Significance (High to Low)</option>
+                  </select>
+                </div>
+
+                <div className="relative">
+                  <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6E6B87]" />
+                  <input
+                    type="text"
+                    placeholder="Search clause text..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-7 pr-2.5 py-0.5 bg-[#F7F7FC] border border-[#E3E1EF] rounded-[6px] text-[11.5px] text-[#17142B] focus:outline-none focus:ring-1 focus:ring-[#4B3FD6] w-44"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -364,35 +575,60 @@ export function CompareScreen({
                 const isSelected = activeComparison && activeComparison.id === c.id;
                 const ref = c.clauseB?.number || c.clauseA?.number || `Item ${idx + 1}`;
                 const title = c.clauseB?.title || c.clauseA?.title || "Clause";
+                const kindLabel =
+                  c.type === "added"
+                    ? "Added"
+                    : c.type === "removed"
+                    ? "Removed"
+                    : c.type === "renumbered"
+                    ? "Renumbered"
+                    : c.significance === "cosmetic"
+                    ? "Wording only"
+                    : "Changed";
 
                 return (
                   <div
                     key={c.id || idx}
-                    onClick={() => setSelectedIdx(idx)}
+                    onClick={() => setActiveId(c.id)}
                     className={`p-2.5 rounded-[10px] border transition-all cursor-pointer ${
                       isSelected
                         ? "bg-[#E8E6FB] border-[#4B3FD6] ring-1 ring-[#4B3FD6]/30 shadow-xs"
                         : "bg-[#F7F7FC] border-[#E3E1EF] hover:border-[#CFCCE0] hover:bg-white"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#17142B] truncate max-w-[200px]">
+                    <div className="flex items-center justify-between mb-1 gap-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#17142B] truncate max-w-[190px]">
                         {getCategoryIcon(title)}
                         <span className="truncate">{ref} · {title}</span>
                       </div>
-                      <span
-                        className={`px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold uppercase tracking-wider shrink-0 ${
-                          c.significance === "high"
-                            ? "bg-[#FFE6D0] text-[#B4440A]"
-                            : c.significance === "medium"
-                            ? "bg-[#FFF0A8] text-[#8A6A00]"
-                            : c.significance === "low"
-                            ? "bg-[#E1ECF9] text-[#2A5C9A]"
-                            : "bg-[#ECEBF5] text-[#5A5775]"
-                        }`}
-                      >
-                        {c.significance}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span
+                          className={`px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold uppercase tracking-wider ${
+                            kindLabel === "Added"
+                              ? "bg-[#DDF3EA] text-[#0B7A5F]"
+                              : kindLabel === "Removed"
+                              ? "bg-[#FCE3EA] text-[#B5224E]"
+                              : kindLabel === "Wording only"
+                              ? "bg-[#ECEBF5] text-[#5A5775]"
+                              : "bg-[#E8E6FB] text-[#4B3FD6]"
+                          }`}
+                        >
+                          {kindLabel}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold uppercase tracking-wider ${
+                            c.significance === "high"
+                              ? "bg-[#FFE6D0] text-[#B4440A]"
+                              : c.significance === "medium"
+                              ? "bg-[#FFF0A8] text-[#8A6A00]"
+                              : c.significance === "low"
+                              ? "bg-[#E1ECF9] text-[#2A5C9A]"
+                              : "bg-[#ECEBF5] text-[#5A5775]"
+                          }`}
+                        >
+                          {c.significance}
+                        </span>
+                      </div>
                     </div>
 
                     <p className="text-[11.5px] text-[#5A5775] line-clamp-2 leading-relaxed">
@@ -404,13 +640,13 @@ export function CompareScreen({
             )}
           </div>
 
-          {/* Right Detail Side-by-Side Diff Inspector (8 cols) */}
+          {/* Right Detail Diff Inspector (8 cols) */}
           <div className="md:col-span-8 h-full bg-white rounded-[14px] border border-[#E3E1EF] p-5 overflow-y-auto space-y-4 shadow-2xs">
             {activeComparison ? (
               <>
-                {/* Clause Summary Banner */}
-                <div className="p-4 rounded-[12px] bg-[#F7F7FC] border border-[#E3E1EF]">
-                  <div className="flex items-center justify-between mb-1.5">
+                {/* Clause Summary Banner & View Toggle */}
+                <div className="p-4 rounded-[12px] bg-[#F7F7FC] border border-[#E3E1EF] space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-semibold text-[15px] text-[#17142B] flex items-center gap-2">
                       {getCategoryIcon(activeComparison.clauseB?.title || activeComparison.clauseA?.title)}
                       <span>
@@ -418,7 +654,34 @@ export function CompareScreen({
                         {activeComparison.clauseB?.title || activeComparison.clauseA?.title || "Clause Analysis"}
                       </span>
                     </h3>
+
                     <div className="flex items-center gap-2">
+                      {/* View Mode Toggle: Side by side vs Inline */}
+                      <div className="flex items-center gap-0.5 bg-[#E3E1EF]/70 p-0.5 rounded-[8px]">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("side_by_side")}
+                          className={`px-2.5 py-1 rounded-[6px] text-[11px] font-medium transition-colors cursor-pointer ${
+                            viewMode === "side_by_side"
+                              ? "bg-white text-[#17142B] shadow-2xs font-bold"
+                              : "text-[#5A5775] hover:text-[#17142B]"
+                          }`}
+                        >
+                          Side by side
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("inline")}
+                          className={`px-2.5 py-1 rounded-[6px] text-[11px] font-medium transition-colors cursor-pointer ${
+                            viewMode === "inline"
+                              ? "bg-white text-[#17142B] shadow-2xs font-bold"
+                              : "text-[#5A5775] hover:text-[#17142B]"
+                          }`}
+                        >
+                          Inline
+                        </button>
+                      </div>
+
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#E8E6FB] text-[#4B3FD6]">
                         {activeComparison.type.replace("_", " ")}
                       </span>
@@ -437,45 +700,106 @@ export function CompareScreen({
                       </span>
                     </div>
                   </div>
-                  <p className="font-reading text-[14.5px] leading-relaxed text-[#17142B] mt-2">
+
+                  <p className="font-reading text-[14px] leading-relaxed text-[#17142B]">
                     {activeComparison.summary}
                   </p>
-                </div>
 
-                {/* Side-by-Side Clauses */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Earlier Version */}
-                  <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-[#F7F7FC]">
-                    <div className="font-semibold text-[12.5px] text-[#5A5775] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
-                      <span className="truncate max-w-[240px]">{result.docA.title}</span>
-                      <span className="text-[11px] font-normal text-[#6E6B87]">Earlier Version</span>
-                    </div>
-                    <div className="font-reading text-[14px] leading-relaxed text-[#3B3855] whitespace-pre-wrap select-text">
-                      {activeComparison.clauseA?.text || (
-                        <span className="italic text-[#6E6B87]">Clause not present in earlier version</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Amended Version */}
-                  <div className="p-4 rounded-[12px] border-2 border-[#4B3FD6]/30 bg-white shadow-xs">
-                    <div className="font-semibold text-[12.5px] text-[#17142B] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
-                      <span className="truncate max-w-[240px] text-[#4B3FD6] font-bold">{result.docB.title}</span>
-                      <span className="text-[11px] font-normal text-[#0B7A5F] bg-[#DDF3EA] px-1.5 py-0.5 rounded-[4px]">
-                        Amended Version
+                  {/* Financial & Legal Signals Chips */}
+                  {activeComparison.signals && activeComparison.signals.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#E3E1EF]">
+                      <span className="text-[10px] font-bold text-[#6E6B87] uppercase tracking-wider mr-1">
+                        Signals:
                       </span>
+                      {activeComparison.signals.map((sig, sIdx) => (
+                        <span
+                          key={sIdx}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-[#E8E6FB] border border-[#4B3FD6]/20 text-[11.5px] font-medium text-[#17142B]"
+                        >
+                          <span className="font-bold text-[#4B3FD6] capitalize">{sig.type}:</span>
+                          <span>{sig.description}</span>
+                          {sig.direction && (
+                            <span className="text-[9.5px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-white text-[#4B3FD6]">
+                              {sig.direction}
+                            </span>
+                          )}
+                        </span>
+                      ))}
                     </div>
-                    <div className="font-reading text-[14px] leading-relaxed text-[#17142B] whitespace-pre-wrap select-text">
-                      {activeComparison.clauseB?.text || (
-                        <span className="italic text-[#6E6B87]">Clause removed in later version</span>
-                      )}
+                  )}
+                </div>
+
+                {/* Diff Text Pane: Side-by-Side OR Inline */}
+                {viewMode === "inline" ? (
+                  <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-white shadow-xs space-y-2">
+                    <div className="font-semibold text-[12.5px] text-[#17142B] pb-2 border-b border-[#E3E1EF] flex items-center justify-between">
+                      <span>Unified Redline Diff</span>
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#B5224E]"></span>
+                          <span className="line-through text-[#B5224E] font-medium">Removed</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#0B7A5F]"></span>
+                          <span className="underline decoration-2 text-[#0B7A5F] font-semibold">Added</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="font-reading text-[14.5px] leading-relaxed text-[#17142B] whitespace-pre-wrap select-text">
+                      <DiffText
+                        textA={activeComparison.clauseA?.text || ""}
+                        textB={activeComparison.clauseB?.text || ""}
+                        mode="inline"
+                      />
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Earlier Version */}
+                    <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-[#F7F7FC]">
+                      <div className="font-semibold text-[12.5px] text-[#5A5775] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
+                        <span className="truncate max-w-[240px]">{result.docA.title}</span>
+                        <span className="text-[11px] font-normal text-[#6E6B87]">Earlier Version</span>
+                      </div>
+                      <div className="font-reading text-[14px] leading-relaxed text-[#3B3855] whitespace-pre-wrap select-text">
+                        {activeComparison.clauseA?.text ? (
+                          <DiffText
+                            textA={activeComparison.clauseA.text}
+                            textB={activeComparison.clauseB?.text || ""}
+                            mode="earlier"
+                          />
+                        ) : (
+                          <span className="italic text-[#6E6B87]">Clause not present in earlier version</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Amended Version */}
+                    <div className="p-4 rounded-[12px] border-2 border-[#4B3FD6]/30 bg-white shadow-xs">
+                      <div className="font-semibold text-[12.5px] text-[#17142B] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
+                        <span className="truncate max-w-[240px] text-[#4B3FD6] font-bold">{result.docB.title}</span>
+                        <span className="text-[11px] font-normal text-[#0B7A5F] bg-[#DDF3EA] px-1.5 py-0.5 rounded-[4px]">
+                          Amended Version
+                        </span>
+                      </div>
+                      <div className="font-reading text-[14px] leading-relaxed text-[#17142B] whitespace-pre-wrap select-text">
+                        {activeComparison.clauseB?.text ? (
+                          <DiffText
+                            textA={activeComparison.clauseA?.text || ""}
+                            textB={activeComparison.clauseB.text}
+                            mode="amended"
+                          />
+                        ) : (
+                          <span className="italic text-[#6E6B87]">Clause removed in later version</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="py-24 text-center text-[#6E6B87]">
-                Select a clause change on the left to inspect side-by-side text.
+                Select a clause change on the left to inspect side-by-side or unified redline text.
               </div>
             )}
           </div>
