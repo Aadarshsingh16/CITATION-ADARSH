@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { MessageSquareText, ArrowRightLeft, Trash2, X } from "lucide-react";
+import { MessageSquareText, ArrowRightLeft, Trash2, X, Eye } from "lucide-react";
 
 interface FloatingBarProps {
   selectedCount: number;
   onAsk: () => void;
   onCompare: () => void;
+  onPreview?: () => void;
   onDelete: () => void;
   onClear: () => void;
   isDeleting?: boolean;
@@ -16,6 +17,7 @@ export function FloatingBar({
   selectedCount,
   onAsk,
   onCompare,
+  onPreview,
   onDelete,
   onClear,
   isDeleting = false,
@@ -45,6 +47,18 @@ export function FloatingBar({
           <MessageSquareText className="w-4 h-4 text-[#4B3FD6]" />
           <span>{selectedCount === 1 ? "Ask about document" : `Ask across ${selectedCount} docs`}</span>
         </button>
+
+        {selectedCount === 1 && onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#262244] text-white hover:bg-[#3B3855] text-[13px] font-medium border border-[#3B3855] transition-colors cursor-pointer shadow-2xs"
+            title="Read / inspect this document in reading desk"
+          >
+            <Eye className="w-4 h-4 text-[#0B7A5F]" />
+            <span>Preview</span>
+          </button>
+        )}
 
         <button
           type="button"

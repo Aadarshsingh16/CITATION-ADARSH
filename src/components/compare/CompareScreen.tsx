@@ -21,6 +21,8 @@ import {
   Loader2,
   AlertTriangle,
   RotateCcw,
+  Sparkles,
+  GitCompare,
 } from "lucide-react";
 
 interface CompareScreenProps {
@@ -56,7 +58,6 @@ export function CompareScreen({
   const [filter, setFilter] = useState<SignificanceLevel | "all">("all");
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"side_by_side" | "inline">("side_by_side");
 
   const runComparison = async (idA: string, idB: string) => {
     if (!idA || !idB || idA === idB) return;
@@ -131,133 +132,125 @@ export function CompareScreen({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 max-w-6xl w-full mx-auto font-sans relative">
-      {/* 1. Header & Version Slots (Section 6.4) */}
-      <div className="bg-white rounded-[18px] border border-[#E3E1EF] p-6 shadow-xs mb-6">
-        <h1 className="text-[22px] font-semibold text-[#17142B] tracking-tight mb-4">
-          Compare Versions
-        </h1>
+    <div className="flex-1 h-full overflow-hidden flex flex-col bg-[#F1F0F8] font-sans">
+      {/* 1. Fixed Top Controls Header (Version slots, timeline map, and filters) */}
+      <div className="bg-white border-b border-[#E3E1EF] px-6 py-3 shrink-0 space-y-2.5 shadow-2xs z-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Version Selection Row */}
+          <div className="flex items-center gap-2 flex-1 max-w-3xl">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10.5px] font-bold text-[#6E6B87] uppercase tracking-wider block mb-0.5">
+                Earlier Version
+              </label>
+              <select
+                value={docAId}
+                onChange={(e) => setDocAId(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-[8px] bg-[#F7F7FC] border border-[#E3E1EF] text-[13px] text-[#17142B] font-medium focus:ring-2 focus:ring-[#4B3FD6] cursor-pointer"
+              >
+                <option value="">Select contract...</option>
+                {documents.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.filename}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-          {/* Earlier version slot */}
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-[12px] font-semibold text-[#6E6B87] uppercase tracking-wider block">
-              Earlier Version
-            </label>
-            <select
-              value={docAId}
-              onChange={(e) => setDocAId(e.target.value)}
-              className="w-full px-3 py-2 rounded-[10px] bg-[#F7F7FC] border border-[#E3E1EF] text-[13.5px] text-[#17142B] font-medium focus:ring-2 focus:ring-[#4B3FD6] cursor-pointer"
-            >
-              <option value="">Select contract...</option>
-              {documents.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.filename}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Swap button */}
-          <div className="flex justify-center md:pt-5">
             <button
               type="button"
               onClick={handleSwap}
-              className="p-2 rounded-[10px] bg-white border border-[#E3E1EF] hover:border-[#17142B] text-[#5A5775] hover:text-[#17142B] transition-colors cursor-pointer shadow-2xs"
+              className="p-1.5 mt-3.5 rounded-[8px] bg-white border border-[#E3E1EF] hover:border-[#17142B] text-[#5A5775] hover:text-[#17142B] transition-colors cursor-pointer shadow-2xs shrink-0"
               title="Swap versions"
             >
               <ArrowRightLeft className="w-4 h-4" />
             </button>
-          </div>
 
-          {/* Later version slot */}
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-[12px] font-semibold text-[#6E6B87] uppercase tracking-wider block">
-              Later Version
-            </label>
-            <select
-              value={docBId}
-              onChange={(e) => setDocBId(e.target.value)}
-              className="w-full px-3 py-2 rounded-[10px] bg-[#F7F7FC] border border-[#E3E1EF] text-[13.5px] text-[#17142B] font-medium focus:ring-2 focus:ring-[#4B3FD6] cursor-pointer"
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10.5px] font-bold text-[#6E6B87] uppercase tracking-wider block mb-0.5">
+                Amended Version
+              </label>
+              <select
+                value={docBId}
+                onChange={(e) => setDocBId(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-[8px] bg-[#F7F7FC] border border-[#E3E1EF] text-[13px] text-[#17142B] font-medium focus:ring-2 focus:ring-[#4B3FD6] cursor-pointer"
+              >
+                <option value="">Select contract...</option>
+                {documents.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.filename}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void runComparison(docAId, docBId)}
+              disabled={!docAId || !docBId || docAId === docBId || loading}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-[#17142B] hover:bg-[#3B3855] text-white text-[13px] font-semibold transition-colors disabled:opacity-40 cursor-pointer shadow-xs shrink-0"
             >
-              <option value="">Select contract...</option>
-              {documents.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.filename}
-                </option>
-              ))}
-            </select>
+              {loading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Aligning...</span>
+                </>
+              ) : (
+                <>
+                  <GitCompare className="w-3.5 h-3.5 text-[#FFD84D]" />
+                  <span>Compare</span>
+                </>
+              )}
+            </button>
           </div>
-        </div>
 
-        <div className="mt-5 flex justify-end">
-          <button
-            type="button"
-            onClick={() => void runComparison(docAId, docBId)}
-            disabled={!docAId || !docBId || docAId === docBId || loading}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-[10px] bg-[#17142B] hover:bg-[#3B3855] text-white text-[13.5px] font-semibold transition-colors disabled:opacity-40 cursor-pointer shadow-xs"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Aligning clauses & extracting signals...</span>
-              </>
-            ) : (
-              <>
-                <ArrowRightLeft className="w-4 h-4 text-[#FFD84D]" />
-                <span>Compare Versions</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Error state */}
-      {error && (
-        <div className="p-4 rounded-[14px] bg-[#FEE4E2] border border-[#B42318]/20 text-[#B42318] text-[13px] flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Comparison failed: {error}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => void runComparison(docAId, docBId)}
-            className="px-2.5 py-1 rounded-[6px] bg-white border border-[#B42318]/30 font-semibold text-xs cursor-pointer hover:bg-[#FEE4E2]"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* 2. Results & Change Map (Section 6.4) */}
-      {result && (
-        <div className="space-y-6">
-          {/* Change Map Spine */}
-          <div className="bg-white rounded-[18px] border border-[#E3E1EF] p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-semibold text-[#17142B]">
-                Contract Change Map
+          {/* Stats Badges */}
+          {result && (
+            <div className="flex items-center gap-2 text-[12px] pt-3">
+              <span className="font-semibold text-[#17142B]">{result.comparisons.length} clauses analysed</span>
+              <span className="px-2 py-0.5 rounded-[6px] bg-[#FFE6D0] text-[#B4440A] font-bold">
+                {result.stats.high} High
               </span>
-              <span className="text-[12px] text-[#6E6B87]">
-                {result.comparisons.length} clauses analysed · Ticks indicate modified terms
+              <span className="px-2 py-0.5 rounded-[6px] bg-[#FFF0A8] text-[#8A6A00] font-bold">
+                {result.stats.medium} Medium
               </span>
+              <span className="px-2 py-0.5 rounded-[6px] bg-[#E1ECF9] text-[#2A5C9A] font-bold">
+                {result.stats.low} Low
+              </span>
+              <span className="px-2 py-0.5 rounded-[6px] bg-[#ECEBF5] text-[#5A5775] font-bold">
+                {result.stats.cosmetic} Cosmetic
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Change Map Timeline with clear labels */}
+        {result && (
+          <div className="pt-2 border-t border-[#F1F0F8] space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] text-[#6E6B87]">
+              <span className="font-semibold text-[#17142B]">
+                Contract Change Timeline (Click any tick to inspect clause):
+              </span>
+              <div className="flex items-center gap-3 font-mono text-[10.5px]">
+                <span>Clause 1 (Start)</span>
+                <span>────────────</span>
+                <span>Clause {result.comparisons.length} (End)</span>
+              </div>
             </div>
 
             <Spine
               cells={result.comparisons.length || 30}
               ticks={spineTicks}
-              thickness={14}
+              thickness={12}
               onSelect={(idx) => setSelectedIdx(idx)}
-              className="my-3"
             />
 
-            {/* Filter Chips */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#F1F0F8]">
-              <div className="flex items-center gap-1.5 text-[12px]">
+            {/* Filter Tabs & Search */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-1.5 text-[11.5px]">
                 <button
                   type="button"
                   onClick={() => setFilter("all")}
-                  className={`px-2.5 py-1 rounded-[6px] font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-[6px] font-medium cursor-pointer transition-colors ${
                     filter === "all" ? "bg-[#17142B] text-white" : "bg-[#F7F7FC] text-[#5A5775] hover:bg-[#ECEBF5]"
                   }`}
                 >
@@ -266,7 +259,7 @@ export function CompareScreen({
                 <button
                   type="button"
                   onClick={() => setFilter("high")}
-                  className={`px-2.5 py-1 rounded-[6px] font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-[6px] font-medium cursor-pointer transition-colors ${
                     filter === "high" ? "bg-[#B4440A] text-white" : "bg-[#FFE6D0] text-[#B4440A]"
                   }`}
                 >
@@ -275,7 +268,7 @@ export function CompareScreen({
                 <button
                   type="button"
                   onClick={() => setFilter("medium")}
-                  className={`px-2.5 py-1 rounded-[6px] font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-[6px] font-medium cursor-pointer transition-colors ${
                     filter === "medium" ? "bg-[#8A6A00] text-white" : "bg-[#FFF0A8] text-[#8A6A00]"
                   }`}
                 >
@@ -284,7 +277,7 @@ export function CompareScreen({
                 <button
                   type="button"
                   onClick={() => setFilter("low")}
-                  className={`px-2.5 py-1 rounded-[6px] font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-[6px] font-medium cursor-pointer transition-colors ${
                     filter === "low" ? "bg-[#2A5C9A] text-white" : "bg-[#E1ECF9] text-[#2A5C9A]"
                   }`}
                 >
@@ -293,7 +286,7 @@ export function CompareScreen({
                 <button
                   type="button"
                   onClick={() => setFilter("cosmetic")}
-                  className={`px-2.5 py-1 rounded-[6px] font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-[6px] font-medium cursor-pointer transition-colors ${
                     filter === "cosmetic" ? "bg-[#5A5775] text-white" : "bg-[#ECEBF5] text-[#5A5775]"
                   }`}
                 >
@@ -301,25 +294,73 @@ export function CompareScreen({
                 </button>
               </div>
 
-              {/* Search */}
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6E6B87]" />
+                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6E6B87]" />
                 <input
                   type="text"
                   placeholder="Search clause text..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 pr-2.5 py-1 bg-[#F7F7FC] border border-[#E3E1EF] rounded-[8px] text-[12px] text-[#17142B] focus:outline-none focus:ring-2 focus:ring-[#4B3FD6] w-40"
+                  className="pl-7 pr-2.5 py-0.5 bg-[#F7F7FC] border border-[#E3E1EF] rounded-[6px] text-[11.5px] text-[#17142B] focus:outline-none focus:ring-1 focus:ring-[#4B3FD6] w-48"
                 />
               </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Master Detail Side-by-Side Change Explorer */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white rounded-[18px] border border-[#E3E1EF] p-6 shadow-xs overflow-hidden">
-            {/* Left list (4 cols) */}
-            <div className="md:col-span-4 border-r border-[#E3E1EF] pr-4 space-y-2 max-h-[560px] overflow-y-auto">
-              {filtered.map((c, idx) => {
+      {/* Error notification */}
+      {error && (
+        <div className="p-3 mx-6 my-2 rounded-[10px] bg-[#FEE4E2] border border-[#B42318]/20 text-[#B42318] text-[12.5px] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>Comparison failed: {error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runComparison(docAId, docBId)}
+            className="text-xs font-semibold underline hover:no-underline cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* 2. Main Comparison Split Workspace (fixed viewport, independent scroll panes) */}
+      {!result ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-12 h-12 rounded-[14px] bg-white border border-[#E3E1EF] shadow-xs flex items-center justify-center text-[#4B3FD6] mb-3">
+            <ArrowRightLeft className="w-6 h-6" />
+          </div>
+          <h2 className="text-[18px] font-semibold text-[#17142B] mb-1">
+            Compare Contract Versions
+          </h2>
+          <p className="text-[13px] text-[#6E6B87] max-w-md mb-4 leading-relaxed">
+            Select two versions above and click Compare to identify modified clauses, liability cap adjustments, payment changes, and cosmetic edits.
+          </p>
+          {documents.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => void runComparison(docAId, docBId)}
+              className="px-4 py-2 rounded-[10px] bg-[#17142B] text-white text-[13px] font-medium hover:bg-[#3B3855] transition-colors cursor-pointer shadow-xs"
+            >
+              Compare Selected Versions
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 gap-4 p-4 min-h-0">
+          {/* Left Clause Navigator (4 cols / 340px) */}
+          <div className="md:col-span-4 h-full bg-white rounded-[14px] border border-[#E3E1EF] p-2.5 overflow-y-auto space-y-1.5 shadow-2xs">
+            <div className="text-[11.5px] font-bold text-[#6E6B87] uppercase tracking-wider px-2 py-1">
+              Clauses ({filtered.length})
+            </div>
+            {filtered.length === 0 ? (
+              <div className="py-12 text-center text-[#6E6B87] text-[12.5px]">
+                No clauses match the selected filter.
+              </div>
+            ) : (
+              filtered.map((c, idx) => {
                 const isSelected = activeComparison && activeComparison.id === c.id;
                 const ref = c.clauseB?.number || c.clauseA?.number || `Item ${idx + 1}`;
                 const title = c.clauseB?.title || c.clauseA?.title || "Clause";
@@ -328,19 +369,19 @@ export function CompareScreen({
                   <div
                     key={c.id || idx}
                     onClick={() => setSelectedIdx(idx)}
-                    className={`p-3 rounded-[10px] border transition-colors cursor-pointer ${
+                    className={`p-2.5 rounded-[10px] border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-[#E8E6FB] border-[#4B3FD6]"
-                        : "bg-[#F7F7FC] border-[#E3E1EF] hover:border-[#CFCCE0]"
+                        ? "bg-[#E8E6FB] border-[#4B3FD6] ring-1 ring-[#4B3FD6]/30 shadow-xs"
+                        : "bg-[#F7F7FC] border-[#E3E1EF] hover:border-[#CFCCE0] hover:bg-white"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#17142B]">
+                      <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#17142B] truncate max-w-[200px]">
                         {getCategoryIcon(title)}
-                        <span>{ref}</span>
+                        <span className="truncate">{ref} · {title}</span>
                       </div>
                       <span
-                        className={`px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider ${
+                        className={`px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold uppercase tracking-wider shrink-0 ${
                           c.significance === "high"
                             ? "bg-[#FFE6D0] text-[#B4440A]"
                             : c.significance === "medium"
@@ -354,63 +395,89 @@ export function CompareScreen({
                       </span>
                     </div>
 
-                    <p className="text-[12px] text-[#5A5775] line-clamp-2 leading-relaxed">
+                    <p className="text-[11.5px] text-[#5A5775] line-clamp-2 leading-relaxed">
                       {c.summary}
                     </p>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
+          </div>
 
-            {/* Right detail clause text (8 cols) */}
-            <div className="md:col-span-8 space-y-4">
-              {activeComparison ? (
-                <>
-                  <div className="p-4 rounded-[12px] bg-[#F7F7FC] border border-[#E3E1EF]">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <h3 className="font-semibold text-[15px] text-[#17142B]">
+          {/* Right Detail Side-by-Side Diff Inspector (8 cols) */}
+          <div className="md:col-span-8 h-full bg-white rounded-[14px] border border-[#E3E1EF] p-5 overflow-y-auto space-y-4 shadow-2xs">
+            {activeComparison ? (
+              <>
+                {/* Clause Summary Banner */}
+                <div className="p-4 rounded-[12px] bg-[#F7F7FC] border border-[#E3E1EF]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h3 className="font-semibold text-[15px] text-[#17142B] flex items-center gap-2">
+                      {getCategoryIcon(activeComparison.clauseB?.title || activeComparison.clauseA?.title)}
+                      <span>
+                        {activeComparison.clauseB?.number || activeComparison.clauseA?.number} —{" "}
                         {activeComparison.clauseB?.title || activeComparison.clauseA?.title || "Clause Analysis"}
-                      </h3>
-                      <span className="text-[11.5px] font-bold uppercase tracking-wider text-[#4B3FD6]">
+                      </span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#E8E6FB] text-[#4B3FD6]">
                         {activeComparison.type.replace("_", " ")}
                       </span>
-                    </div>
-                    <p className="font-reading text-[15px] leading-relaxed text-[#17142B]">
-                      {activeComparison.summary}
-                    </p>
-                  </div>
-
-                  {/* Side-by-side texts */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-[#F7F7FC]">
-                      <div className="font-semibold text-[12.5px] text-[#5A5775] pb-2 mb-2 border-b border-[#E3E1EF]">
-                        {result.docA.title} (Earlier)
-                      </div>
-                      <div className="font-reading text-[14px] leading-relaxed text-[#3B3855] whitespace-pre-wrap">
-                        {activeComparison.clauseA?.text || (
-                          <span className="italic text-[#6E6B87]">Clause not present in earlier version</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-white shadow-xs">
-                      <div className="font-semibold text-[12.5px] text-[#17142B] pb-2 mb-2 border-b border-[#E3E1EF]">
-                        {result.docB.title} (Amended)
-                      </div>
-                      <div className="font-reading text-[14px] leading-relaxed text-[#17142B] whitespace-pre-wrap">
-                        {activeComparison.clauseB?.text || (
-                          <span className="italic text-[#6E6B87]">Clause removed in later version</span>
-                        )}
-                      </div>
+                      <span
+                        className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[4px] ${
+                          activeComparison.significance === "high"
+                            ? "bg-[#FFE6D0] text-[#B4440A]"
+                            : activeComparison.significance === "medium"
+                            ? "bg-[#FFF0A8] text-[#8A6A00]"
+                            : activeComparison.significance === "low"
+                            ? "bg-[#E1ECF9] text-[#2A5C9A]"
+                            : "bg-[#ECEBF5] text-[#5A5775]"
+                        }`}
+                      >
+                        {activeComparison.significance} Significance
+                      </span>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="py-20 text-center text-[#6E6B87]">
-                  Select a clause change to inspect side-by-side text.
+                  <p className="font-reading text-[14.5px] leading-relaxed text-[#17142B] mt-2">
+                    {activeComparison.summary}
+                  </p>
                 </div>
-              )}
-            </div>
+
+                {/* Side-by-Side Clauses */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Earlier Version */}
+                  <div className="p-4 rounded-[12px] border border-[#E3E1EF] bg-[#F7F7FC]">
+                    <div className="font-semibold text-[12.5px] text-[#5A5775] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
+                      <span className="truncate max-w-[240px]">{result.docA.title}</span>
+                      <span className="text-[11px] font-normal text-[#6E6B87]">Earlier Version</span>
+                    </div>
+                    <div className="font-reading text-[14px] leading-relaxed text-[#3B3855] whitespace-pre-wrap select-text">
+                      {activeComparison.clauseA?.text || (
+                        <span className="italic text-[#6E6B87]">Clause not present in earlier version</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Amended Version */}
+                  <div className="p-4 rounded-[12px] border-2 border-[#4B3FD6]/30 bg-white shadow-xs">
+                    <div className="font-semibold text-[12.5px] text-[#17142B] pb-2 mb-2 border-b border-[#E3E1EF] flex items-center justify-between">
+                      <span className="truncate max-w-[240px] text-[#4B3FD6] font-bold">{result.docB.title}</span>
+                      <span className="text-[11px] font-normal text-[#0B7A5F] bg-[#DDF3EA] px-1.5 py-0.5 rounded-[4px]">
+                        Amended Version
+                      </span>
+                    </div>
+                    <div className="font-reading text-[14px] leading-relaxed text-[#17142B] whitespace-pre-wrap select-text">
+                      {activeComparison.clauseB?.text || (
+                        <span className="italic text-[#6E6B87]">Clause removed in later version</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-24 text-center text-[#6E6B87]">
+                Select a clause change on the left to inspect side-by-side text.
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -169,18 +169,40 @@ export function ReadingDesk({
     }
   };
 
-  // Jump to active page on quote change
+  // Jump to active quote (exact highlighted line/span) on quote change
   useEffect(() => {
-    if (activePageRanges.length > 0 && scrollContainerRef.current) {
-      const targetPageNum = activePageRanges[0].pageNumber;
-      const targetEl = scrollContainerRef.current.querySelector(
-        `[data-page-number="${targetPageNum}"]`
-      );
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!scrollContainerRef.current) return;
+
+    // Brief timeout to allow DOM/canvas/text layer rendering
+    const timer = setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      // 1. Try to scroll directly to the exact highlight element
+      const highlightEl =
+        container.querySelector<HTMLElement>("[data-active-quote='true']") ||
+        container.querySelector<HTMLElement>(".citation-highlight-full") ||
+        container.querySelector<HTMLElement>("mark");
+
+      if (highlightEl) {
+        highlightEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
       }
-    }
-  }, [activeOccurrenceIndex, activePageRanges]);
+
+      // 2. Fallback to active page if specific highlight not yet in DOM
+      if (activePageRanges.length > 0) {
+        const targetPageNum = activePageRanges[0].pageNumber;
+        const targetPageEl = container.querySelector(
+          `[data-page-number="${targetPageNum}"]`
+        );
+        if (targetPageEl) {
+          targetPageEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [activeOccurrenceIndex, activePageRanges, currentMatch, loading, pdfLoading]);
 
   const handleCopyQuote = async () => {
     if (!activeQuote?.text) return;
@@ -418,7 +440,10 @@ export function ReadingDesk({
                         {sliced.highlighted ? (
                           <>
                             {sliced.before}
-                            <mark className="bg-[#FFD84D] text-[#17142B] font-semibold px-0.5 rounded-[2px]">
+                            <mark
+                              data-active-quote="true"
+                              className="bg-[#FFD84D] text-[#17142B] font-semibold px-1 py-0.5 rounded-[3px] active-quote-target shadow-xs"
+                            >
                               {sliced.highlighted}
                             </mark>
                             {sliced.after}

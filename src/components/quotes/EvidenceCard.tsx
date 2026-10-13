@@ -68,15 +68,15 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
       <StatusBar state={statusBarState} reason={reason} />
 
       {/* Passage block */}
-      <div className="p-3.5 bg-[#F9FAFB]">
+      <div className="p-2.5 bg-[#F9FAFB]">
         <div
-          className="font-contract text-[14.5px] text-[#111827] leading-relaxed bg-white p-3 rounded-[8px] border border-[#E5E7EB]"
+          className="font-contract text-[13.5px] text-[#111827] leading-relaxed bg-white p-2.5 rounded-[8px] border border-[#E5E7EB] max-h-32 overflow-y-auto"
           dir="auto"
         >
           {statusBarState === "unverified" ? (
             <div className="text-[#B45309] italic">
               "{quoteText}"
-              <span className="block mt-1 text-[12px] text-[#6B7280] not-italic">
+              <span className="block mt-0.5 text-[11.5px] text-[#6B7280] not-italic">
                 (This wording could not be located in the specified document)
               </span>
             </div>
@@ -89,24 +89,24 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
       </div>
 
       {/* Footer strip with location and actions */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#F3F4F6] border-t border-[#E5E7EB] text-[13px]">
-        <span className="text-[#6B7280] font-medium">{locationText}</span>
+      <div className="flex items-center justify-between px-3 py-2 bg-[#F3F4F6] border-t border-[#E5E7EB] text-[12px]">
+        <span className="text-[#5A5775] font-medium truncate max-w-[120px]">{locationText}</span>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[12.5px] font-medium text-[#4B5563] hover:text-[#111827] hover:bg-white rounded-[6px] border border-transparent hover:border-[#D1D5DB] transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11.5px] font-medium text-[#4B5563] hover:text-[#111827] hover:bg-white rounded-[6px] border border-transparent hover:border-[#D1D5DB] transition-colors cursor-pointer"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-[#15803D]" />
+                <Check className="w-3 h-3 text-[#15803D]" />
                 <span className="text-[#15803D]">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-[#6B7280]" />
-                <span>Copy quote</span>
+                <Copy className="w-3 h-3 text-[#6B7280]" />
+                <span>Copy</span>
               </>
             )}
           </button>
@@ -115,14 +115,16 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
             <button
               type="button"
               onClick={onOpenDocument}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[12.5px] font-medium text-[#111827] bg-white hover:bg-[#F9FAFB] rounded-[6px] border border-[#D1D5DB] shadow-xs transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[12px] font-semibold text-white bg-[#17142B] hover:bg-[#3B3855] rounded-[6px] shadow-xs transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#4B3FD6]"
+              title="Jump directly to this exact line in contract desk"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-[#2563EB]" />
-              <span>Show in document</span>
+              <ExternalLink className="w-3 h-3 text-white" />
+              <span>Show in doc</span>
             </button>
           )}
         </div>
       </div>
     </div>
+
   );
 };

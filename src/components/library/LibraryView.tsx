@@ -15,6 +15,7 @@ import {
   MessageSquare,
   FilePlus,
   Loader2,
+  Eye,
 } from "lucide-react";
 
 interface LibraryViewProps {
@@ -25,6 +26,7 @@ interface LibraryViewProps {
   onSeedSamples: () => Promise<void>;
   onAskDocument: (docIds: string[]) => void;
   onCompareDocuments: (docAId: string, docBId: string) => void;
+  onPreviewDocument?: (docId: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -47,6 +49,7 @@ export function LibraryView({
   onSeedSamples,
   onAskDocument,
   onCompareDocuments,
+  onPreviewDocument,
 }: LibraryViewProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -443,9 +446,9 @@ export function LibraryView({
                             <div className="min-w-0">
                               <button
                                 type="button"
-                                onClick={() => onAskDocument([doc.id])}
-                                className="font-semibold text-[#17142B] hover:text-[#4B3FD6] hover:underline truncate block text-left text-[13.5px] cursor-pointer"
-                                title={doc.filename}
+                                onClick={() => onPreviewDocument ? onPreviewDocument(doc.id) : onAskDocument([doc.id])}
+                                className="font-semibold text-[#17142B] hover:text-[#0B7A5F] hover:underline truncate block text-left text-[13.5px] cursor-pointer"
+                                title={`Click to preview ${doc.filename}`}
                               >
                                 {doc.filename}
                               </button>
@@ -481,6 +484,16 @@ export function LibraryView({
                         {/* Row Hover Actions */}
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => onPreviewDocument ? onPreviewDocument(doc.id) : onAskDocument([doc.id])}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-white border border-[#E3E1EF] hover:border-[#0B7A5F] text-[12px] font-medium text-[#0B7A5F] hover:bg-[#DDF3EA]/30 transition-colors cursor-pointer shadow-2xs"
+                              title="Preview document in reading desk"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-[#0B7A5F]" />
+                              <span>Preview</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => onAskDocument([doc.id])}
@@ -519,6 +532,11 @@ export function LibraryView({
             onCompareDocuments(selectedIds[0], selectedIds[1]);
           }
         }}
+        onPreview={
+          selectedIds.length === 1 && onPreviewDocument
+            ? () => onPreviewDocument(selectedIds[0])
+            : undefined
+        }
         onDelete={() => void handleDeleteSelected()}
         onClear={() => setSelectedIds([])}
         isDeleting={isDeleting}

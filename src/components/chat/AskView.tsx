@@ -18,6 +18,7 @@ import {
   ChevronRight,
   X,
   FilePlus,
+  Eye,
 } from "lucide-react";
 
 interface AskViewProps {
@@ -467,18 +468,44 @@ export function AskView({
             </button>
           </div>
 
-          {/* Mode tag */}
-          <div className="text-[12px] text-[#6E6B87] font-medium hidden sm:block">
-            {selectedDocs.length > 1
-              ? "Comparative analysis"
-              : selectedDocs.length === 1
-              ? "Read in full"
-              : "Select document"}
+          {/* Action buttons & mode tag */}
+          <div className="flex items-center gap-2.5">
+            {selectedDocs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDeskOpen) {
+                    setDeskDocId(null);
+                    setActiveQuoteCitation(null);
+                  } else {
+                    setDeskDocId(selectedDocIds[0]);
+                    setActiveQuoteCitation(null);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border transition-colors cursor-pointer shadow-2xs ${
+                  isDeskOpen
+                    ? "bg-[#17142B] text-white border-[#17142B]"
+                    : "bg-white text-[#17142B] border-[#E3E1EF] hover:border-[#0B7A5F] hover:text-[#0B7A5F]"
+                }`}
+                title={isDeskOpen ? "Close document preview desk" : "Preview contract text alongside chat"}
+              >
+                <Eye className="w-3.5 h-3.5 text-[#0B7A5F]" />
+                <span>{isDeskOpen ? "Close Desk" : "Preview Document"}</span>
+              </button>
+            )}
+
+            <div className="text-[12px] text-[#6E6B87] font-medium hidden sm:block">
+              {selectedDocs.length > 1
+                ? "Comparative analysis"
+                : selectedDocs.length === 1
+                ? "Read in full"
+                : "Select document"}
+            </div>
           </div>
         </div>
 
         {/* Exchanges Reading Flow */}
-        <div className="flex-1 overflow-y-auto px-8 py-4 select-text">
+        <div className="flex-1 overflow-y-auto px-8 py-6 pb-36 select-text">
           {selectedDocs.length === 0 ? (
             <div className="py-20 text-center max-w-md mx-auto">
               <h3 className="text-[18px] font-semibold text-[#17142B] mb-2">

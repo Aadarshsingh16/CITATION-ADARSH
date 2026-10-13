@@ -134,10 +134,10 @@ export const PdfPageView: React.FC<PdfPageViewProps> = ({
                 }
 
                 if (highlight.isFullSpan) {
-                  span.classList.add("citation-highlight-full");
-                  span.style.backgroundColor = "rgba(254, 240, 138, 0.65)";
-                  span.style.borderRadius = "2px";
-                  span.style.boxShadow = "0 0 0 1px rgba(245, 158, 11, 0.4)";
+                  span.classList.add("citation-highlight-full", "active-quote-target");
+                  span.setAttribute("data-active-quote", "true");
+                  span.style.backgroundColor = "rgba(255, 216, 77, 0.75)";
+                  span.style.borderRadius = "3px";
                 } else {
                   const original = span.textContent || "";
                   const before = original.slice(0, highlight.startOffsetInSpan);
@@ -147,13 +147,15 @@ export const PdfPageView: React.FC<PdfPageViewProps> = ({
                   );
                   const after = original.slice(highlight.endOffsetInSpan);
 
-                  span.innerHTML = `${escapeHtml(before)}<mark style="background-color: rgba(254, 240, 138, 0.65); box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4); border-radius: 2px;">${escapeHtml(mid)}</mark>${escapeHtml(after)}`;
+                  span.innerHTML = `${escapeHtml(before)}<mark data-active-quote="true" class="active-quote-target" style="background-color: #FFD84D; border-radius: 3px; font-weight: 600;">${escapeHtml(mid)}</mark>${escapeHtml(after)}`;
                 }
               }
 
               if (isActivePage && firstSpanElement) {
-                firstSpanElement.scrollIntoView({ behavior: "smooth", block: "center" });
-                onFirstHighlightRendered?.();
+                setTimeout(() => {
+                  firstSpanElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  onFirstHighlightRendered?.();
+                }, 120);
               }
             }
           }
@@ -210,7 +212,10 @@ export const PdfPageView: React.FC<PdfPageViewProps> = ({
           {sliced.highlighted ? (
             <>
               {sliced.before}
-              <mark className="bg-amber-200/80 text-stone-950 font-semibold px-0.5 rounded-xs shadow-2xs">
+              <mark
+                data-active-quote="true"
+                className="bg-[#FFD84D] text-[#17142B] font-semibold px-1 py-0.5 rounded-[3px] active-quote-target shadow-xs"
+              >
                 {sliced.highlighted}
               </mark>
               {sliced.after}

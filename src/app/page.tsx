@@ -8,12 +8,14 @@ import { SampleContractsModal } from "@/components/navigation/SampleContractsMod
 import { LibraryView } from "@/components/library/LibraryView";
 import { AskView } from "@/components/chat/AskView";
 import { CompareScreen } from "@/components/compare/CompareScreen";
+import { ReadingDesk } from "@/components/reading/ReadingDesk";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<NavMode>("library");
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [comparePair, setComparePair] = useState<{ docAId?: string; docBId?: string }>({});
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null);
   const [showSamplesModal, setShowSamplesModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
@@ -141,6 +143,7 @@ export default function Home() {
             onSeedSamples={handleSeedSamples}
             onAskDocument={handleAskDocument}
             onCompareDocuments={handleCompareDocuments}
+            onPreviewDocument={(id) => setPreviewDocId(id)}
           />
         )}
 
@@ -163,6 +166,17 @@ export default function Home() {
       </main>
 
       {/* Modals */}
+      {previewDocId && (
+        <div className="fixed inset-0 z-50 bg-[#17142B]/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+          <div className="bg-white rounded-[20px] shadow-2xl border border-[#CFCCE0] w-full max-w-5xl h-[88vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <ReadingDesk
+              documentId={previewDocId}
+              onClose={() => setPreviewDocId(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {showSamplesModal && (
         <SampleContractsModal
           onClose={() => setShowSamplesModal(false)}
@@ -176,4 +190,5 @@ export default function Home() {
     </div>
   );
 }
+
 
