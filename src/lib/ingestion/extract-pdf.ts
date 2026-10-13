@@ -42,6 +42,26 @@ export async function extractPdf(
 ): Promise<PdfExtractionResult> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    try {
+      const { pathToFileURL } = await import("node:url");
+      const path = await import("node:path");
+      const fs = await import("node:fs");
+      const candidates = [
+        path.resolve(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"),
+        path.resolve(process.cwd(), "public/pdf.worker.mjs"),
+      ];
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(cand).href;
+          break;
+        }
+      }
+    } catch {
+      // Fallback if filesystem lookup fails
+    }
+  }
+
   let doc;
   try {
     const loadingTask = pdfjs.getDocument({
@@ -56,6 +76,7 @@ export async function extractPdf(
 
     doc = await loadingTask.promise;
   } catch (err: unknown) {
+    console.error("[extractPdf error]:", err);
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("PASSWORD_REQUIRED") || msg.toLowerCase().includes("password") || msg.toLowerCase().includes("encrypted")) {
       return {
