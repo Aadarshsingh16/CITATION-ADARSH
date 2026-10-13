@@ -3,6 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { StoredMessage, StoredQuote, StoredChat } from "@/server/chat";
 import { MessageBubble } from "./MessageBubble";
+import {
+  Square,
+  ArrowUp,
+  History,
+  Plus,
+  Compass,
+  FileText,
+  ChevronDown,
+  Sparkles,
+} from "lucide-react";
 
 export interface ChatWorkspaceProps {
   selectedDocIds: string[];
@@ -23,9 +33,27 @@ export function ChatWorkspace({
   const [showHistoryMenu, setShowHistoryMenu] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
   const [deepResearch, setDeepResearch] = useState(false);
+  const [docNamesMap, setDocNamesMap] = useState<Record<string, string>>({});
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Fetch document names map for multi-doc labels
+  useEffect(() => {
+    fetch("/api/documents")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.documents) {
+          const m: Record<string, string> = {};
+          for (const doc of d.documents) {
+            m[doc.id] = doc.filename;
+          }
+          setDocNamesMap(m);
+        }
+      })
+      .catch(console.error);
+  }, [selectedDocIds]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,7 +61,7 @@ export function ChatWorkspace({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   // Load chat threads when selected documents change
   useEffect(() => {
@@ -52,7 +80,6 @@ export function ChatWorkspace({
           setChatHistory(data.chats);
           const latest = data.chats[0];
           setCurrentChatId(latest.id);
-          // Load messages of latest thread
           fetch(`/api/chats/${latest.id}/messages`)
             .then((r) => r.json())
             .then((mRes) => {
@@ -89,8 +116,8 @@ export function ChatWorkspace({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsStreaming(false);
+      setProgressText(null);
 
-      // Mark the latest message as stopped
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
@@ -110,12 +137,15 @@ export function ChatWorkspace({
     if (!textToSend || isStreaming || selectedDocIds.length === 0) return;
 
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setIsStreaming(true);
+    setProgressText(null);
 
     const userTempId = `user-${Date.now()}`;
     const assistantTempId = `assistant-${Date.now()}`;
 
-    // Optimistically append user message and placeholder assistant message
     const optimisticUser: StoredMessage = {
       id: userTempId,
       chatId: currentChatId || "",
@@ -142,192 +172,141 @@ export function ChatWorkspace({
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch("/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({
-          chatId: currentChatId || undefined,
+          chatId: currentChatId,
           documentIds: selectedDocIds,
           question: textToSend,
-          deepResearch,
+          enableAgent: deepResearch,
         }),
+        signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || `HTTP ${response.status}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
+      if (!res.body) {
+        throw new Error("No response body received");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
       let buffer = "";
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { value, done } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
 
-        for (const evtBlock of events) {
-          if (!evtBlock.trim()) continue;
-          const lines = evtBlock.split("\n");
-          let eventName = "message";
-          let dataStr = "";
+        for (const block of lines) {
+          const trimmed = block.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const jsonStr = trimmed.replace(/^data:\s*/, "");
+          if (jsonStr === "[DONE]") break;
 
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              eventName = line.slice(7).trim();
-            } else if (line.startsWith("data: ")) {
-              dataStr = line.slice(6).trim();
-            }
-          }
-
-          if (!dataStr) continue;
-          let parsed: any = null;
           try {
-            parsed = JSON.parse(dataStr);
+            const ev = JSON.parse(jsonStr);
+
+            if (ev.type === "init") {
+              if (ev.chatId && !currentChatId) {
+                setCurrentChatId(ev.chatId);
+              }
+            } else if (ev.type === "progress") {
+              setProgressText(ev.message || "Analyzing clauses...");
+            } else if (ev.type === "trace") {
+              setProgressText(ev.step?.label || "Researching...");
+            } else if (ev.type === "token") {
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                  next[lastIdx] = {
+                    ...next[lastIdx],
+                    content: (next[lastIdx].content || "") + (ev.token || ""),
+                  };
+                }
+                return next;
+              });
+            } else if (ev.type === "quote") {
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                  const existingQuotes = next[lastIdx].quotes || [];
+                  const quoteIdx = existingQuotes.findIndex(
+                    (q) => q.localId === ev.quote.localId
+                  );
+                  if (quoteIdx >= 0) {
+                    existingQuotes[quoteIdx] = ev.quote;
+                  } else {
+                    existingQuotes.push(ev.quote);
+                  }
+                  next[lastIdx] = {
+                    ...next[lastIdx],
+                    quotes: [...existingQuotes],
+                  };
+                }
+                return next;
+              });
+            } else if (ev.type === "complete") {
+              setProgressText(null);
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                  next[lastIdx] = {
+                    ...next[lastIdx],
+                    id: ev.messageId || next[lastIdx].id,
+                    mode: ev.mode,
+                    coverage: ev.coverage,
+                    quotes: ev.quotes || next[lastIdx].quotes,
+                    stats: ev.stats,
+                    status: "complete",
+                  };
+                }
+                return next;
+              });
+            } else if (ev.type === "error") {
+              setProgressText(null);
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                  next[lastIdx] = {
+                    ...next[lastIdx],
+                    content:
+                      next[lastIdx].content +
+                      `\n\n[Error: ${ev.message || "Request failed"}]`,
+                    status: "error",
+                  };
+                }
+                return next;
+              });
+            }
           } catch {
-            continue;
-          }
-
-          if (eventName === "init") {
-            setCurrentChatId(parsed.chatId);
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id === userTempId) return { ...m, id: parsed.userMessageId, chatId: parsed.chatId };
-                if (m.id === assistantTempId) return { ...m, id: parsed.assistantMessageId, chatId: parsed.chatId, mode: parsed.mode };
-                return m;
-              })
-            );
-          } else if (eventName === "agent_trace") {
-            setProgressText(`Agent [Round ${parsed.round}]: ${parsed.message}`);
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                const currentStats = (last.stats as any) || {};
-                const currentTrace = Array.isArray(currentStats.trace) ? [...currentStats.trace] : [];
-                const existIdx = currentTrace.findIndex((t: any) => t.id === parsed.id);
-                if (existIdx >= 0) {
-                  currentTrace[existIdx] = parsed;
-                } else {
-                  currentTrace.push(parsed);
-                }
-                next[next.length - 1] = {
-                  ...last,
-                  mode: "agent",
-                  stats: { ...currentStats, trace: currentTrace },
-                };
-              }
-              return next;
-            });
-          } else if (eventName === "progress") {
-            setProgressText(parsed.step || `Analyzing (${parsed.percent}%)...`);
-          } else if (eventName === "token") {
-            setProgressText(null);
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                next[next.length - 1] = {
-                  ...last,
-                  content: last.content + (parsed.text || ""),
-                };
-              }
-              return next;
-            });
-          } else if (eventName === "quote") {
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                const existingQuoteIdx = last.quotes.findIndex(
-                  (q) => q.localId === parsed.localId
-                );
-                const updatedQuote: StoredQuote = {
-                  id: parsed.id,
-                  messageId: last.id,
-                  localId: parsed.localId,
-                  documentId: parsed.documentId,
-                  documentName: parsed.documentName,
-                  text: parsed.text,
-                  status: parsed.status,
-                  reason: parsed.reason,
-                  matches: parsed.matches,
-                  createdAt: new Date(),
-                };
-
-                let newQuotes = [...last.quotes];
-                if (existingQuoteIdx >= 0) {
-                  newQuotes[existingQuoteIdx] = updatedQuote;
-                } else {
-                  newQuotes.push(updatedQuote);
-                }
-
-                next[next.length - 1] = {
-                  ...last,
-                  quotes: newQuotes,
-                };
-              }
-              return next;
-            });
-          } else if (eventName === "coverage") {
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                next[next.length - 1] = {
-                  ...last,
-                  coverage: parsed,
-                };
-              }
-              return next;
-            });
-          } else if (eventName === "done") {
-            setIsStreaming(false);
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                next[next.length - 1] = {
-                  ...last,
-                  content: parsed.content || last.content,
-                  status: parsed.stopped ? "stopped" : "complete",
-                };
-              }
-              return next;
-            });
-          } else if (eventName === "error") {
-            setIsStreaming(false);
-            setMessages((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "assistant") {
-                next[next.length - 1] = {
-                  ...last,
-                  status: "error",
-                  content: `${last.content}\n\n[Error: ${parsed.message || "Failed to generate answer"}]`,
-                };
-              }
-              return next;
-            });
+            // ignore malformed SSE block
           }
         }
       }
-    } catch (err: any) {
-      if (!controller.signal.aborted) {
-        setIsStreaming(false);
+    } catch (err: unknown) {
+      if ((err as Error)?.name !== "AbortError") {
         setMessages((prev) => {
           const next = [...prev];
-          const last = next[next.length - 1];
-          if (last && last.role === "assistant") {
-            next[next.length - 1] = {
-              ...last,
+          const lastIdx = next.length - 1;
+          if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+            next[lastIdx] = {
+              ...next[lastIdx],
+              content:
+                next[lastIdx].content +
+                `\n\n[Failed to complete request: ${(err as Error)?.message || String(err)}]`,
               status: "error",
-              content: `${last.content}\n\n[Error: ${err.message || "Network error"}]`,
             };
           }
           return next;
@@ -335,6 +314,7 @@ export function ChatWorkspace({
       }
     } finally {
       setIsStreaming(false);
+      setProgressText(null);
       abortControllerRef.current = null;
     }
   };
@@ -346,67 +326,72 @@ export function ChatWorkspace({
     }
   };
 
+  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+  };
+
   const hasDocsSelected = selectedDocIds.length > 0;
+  const headerTitle =
+    selectedDocIds.length > 1
+      ? `${selectedDocIds.length} documents`
+      : selectedDocIds.length === 1
+      ? docNamesMap[selectedDocIds[0]] || activeDocFilename || "Selected Document"
+      : "No document selected";
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-stone-50/50 relative overflow-hidden">
-      {/* 1. Header with scope indicator, history toggle, and actions */}
-      <header className="h-14 border-b border-stone-200 px-6 flex items-center justify-between bg-white shrink-0 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-            Analysis Scope:
-          </span>
-          {hasDocsSelected ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
-                {selectedDocIds.length} document{selectedDocIds.length > 1 ? "s" : ""} selected
-              </span>
-              {activeDocFilename && (
-                <span className="text-xs font-medium text-stone-600 truncate max-w-xs">
-                  ({activeDocFilename})
-                </span>
-              )}
+    <div className="flex flex-col h-full bg-white font-sans select-none overflow-hidden">
+      {/* 1. Header (Section 6.5) */}
+      <div className="px-5 py-3 border-b border-[#E5E7EB] bg-white flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-[8px] bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold text-[#111827] truncate" title={headerTitle}>
+              {headerTitle}
+            </h2>
+            <div className="text-[11.5px] text-[#6B7280]">
+              {selectedDocIds.length > 1
+                ? "Cross-contract synthesis and quote attribution"
+                : "Strict quote verification and absence honesty"}
             </div>
-          ) : (
-            <span className="text-xs text-stone-400 italic">
-              Select at least one document in the sidebar to chat
-            </span>
-          )}
+          </div>
         </div>
 
+        {/* Chat History & New Thread */}
         <div className="flex items-center gap-2">
-          {/* Thread History Button */}
           {chatHistory.length > 0 && (
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowHistoryMenu((p) => !p)}
-                className="text-xs font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200 transition-colors flex items-center gap-1 cursor-pointer"
+                onClick={() => setShowHistoryMenu(!showHistoryMenu)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#F9FAFB] hover:bg-[#F3F4F6] border border-[#E5E7EB] text-[12.5px] font-medium text-[#4B5563] transition-colors cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>History ({chatHistory.length})</span>
+                <History className="w-3.5 h-3.5 text-[#6B7280]" />
+                <span>History</span>
+                <ChevronDown className="w-3 h-3 text-[#9CA3AF]" />
               </button>
 
               {showHistoryMenu && (
-                <div className="absolute right-0 top-9 w-64 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-50">
-                  <div className="px-3 py-1.5 border-b border-stone-100 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                <div className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-[12px] border border-[#E5E7EB] shadow-[0_8px_24px_rgba(17,24,39,0.12)] p-1 z-30">
+                  <div className="p-1.5 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider">
                     Past Conversations
                   </div>
-                  <div className="max-h-56 overflow-y-auto">
+                  <div className="max-h-56 overflow-y-auto space-y-0.5">
                     {chatHistory.map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => loadPastChat(c)}
-                        className={`w-full text-left px-3 py-2 text-xs truncate transition-colors cursor-pointer ${
+                        className={`w-full text-left px-2.5 py-1.5 rounded-[6px] text-[12px] truncate transition-colors cursor-pointer ${
                           c.id === currentChatId
-                            ? "bg-indigo-50 text-indigo-900 font-semibold"
-                            : "text-stone-700 hover:bg-stone-50"
+                            ? "bg-[#EFF6FF] text-[#2563EB] font-medium"
+                            : "hover:bg-[#F9FAFB] text-[#374151]"
                         }`}
                       >
-                        {c.title}
+                        {c.title || "Contract analysis thread"}
                       </button>
                     ))}
                   </div>
@@ -415,48 +400,36 @@ export function ChatWorkspace({
             </div>
           )}
 
-          {/* New Chat Button */}
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={startNewChat}
-              className="text-xs font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200 transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>New Chat</span>
-            </button>
-          )}
-
-          <span className="text-[11px] text-emerald-800 font-medium bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-            Strict Quote Verification
-          </span>
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] bg-white hover:bg-[#F9FAFB] border border-[#D1D5DB] text-[12.5px] font-medium text-[#111827] transition-colors cursor-pointer shadow-xs focus:ring-2 focus:ring-[#2563EB]"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#2563EB]" />
+            <span>New chat</span>
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* 2. Messages Stream Container */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      {/* 2. Message List */}
+      <div className="flex-1 overflow-y-auto p-5 select-text">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col justify-center items-center text-center max-w-lg mx-auto py-12">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 border border-indigo-100 shadow-xs">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+          <div className="max-w-[560px] mx-auto py-12 text-center">
+            <div className="w-10 h-10 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center mx-auto mb-3">
+              <Compass className="w-5 h-5" />
             </div>
-
-            <h2 className="text-base font-bold text-stone-900 mb-1.5">
-              Legal Contract Assistant
-            </h2>
-            <p className="text-xs text-stone-500 mb-6 leading-relaxed max-w-sm">
-              Ask targeted questions about terms, liabilities, termination, or dispute clauses.
-              Every assertion is verified with verbatim quotes.
+            <h3 className="text-[17px] font-semibold text-[#111827] mb-1.5">
+              Verified Legal Contract Analysis
+            </h3>
+            <p className="text-[13px] text-[#6B7280] mb-6 leading-relaxed">
+              Ask questions about clauses, payment schedules, liabilities, or governance.
+              Every assertion is verified against canonical text with interactive quote chips.
             </p>
 
-            {/* Suggested Starter Questions */}
+            {/* Suggested Starter Questions (Section 6.6) */}
             {hasDocsSelected ? (
-              <div className="space-y-2 text-left w-full">
-                <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-2">
+              <div className="space-y-2 text-left">
+                <p className="text-[11.5px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-2">
                   Suggested Questions:
                 </p>
                 {[
@@ -469,23 +442,21 @@ export function ChatWorkspace({
                     key={i}
                     type="button"
                     onClick={() => handleSendMessage(query)}
-                    className="w-full text-left p-3 rounded-xl border border-stone-200/80 bg-white hover:border-indigo-300 hover:bg-indigo-50/30 text-xs text-stone-700 font-medium transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
+                    className="w-full text-left p-3 rounded-[10px] border border-[#E5E7EB] bg-white hover:border-[#BFDBFE] hover:bg-[#EFF6FF]/40 text-[13px] text-[#374151] font-medium transition-all flex items-center justify-between group cursor-pointer shadow-xs"
                   >
                     <span className="truncate">{query}</span>
-                    <svg className="w-3.5 h-3.5 text-stone-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ArrowUp className="w-3.5 h-3.5 text-[#9CA3AF] group-hover:text-[#2563EB] group-hover:translate-x-0.5 transition-all shrink-0 ml-2 rotate-45" />
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="p-4 rounded-xl border border-dashed border-stone-300 bg-white text-xs text-stone-500">
-                Select a document in the library sidebar to begin chatting.
+              <div className="p-4 rounded-[12px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] text-[13px] text-[#6B7280]">
+                Select a document in the library panel to begin analyzing.
               </div>
             )}
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="max-w-[720px] mx-auto space-y-4">
             {messages.map((m, idx) => {
               const isLastMessage = idx === messages.length - 1;
               return (
@@ -494,6 +465,7 @@ export function ChatWorkspace({
                   message={m}
                   isStreaming={isStreaming && isLastMessage && m.role === "assistant"}
                   onOpenQuoteInViewer={onOpenQuoteInViewer}
+                  documentNames={docNamesMap}
                 />
               );
             })}
@@ -502,41 +474,78 @@ export function ChatWorkspace({
         )}
       </div>
 
-      {/* 3. Composer Bar */}
-      <div className="p-4 border-t border-stone-200 bg-white shrink-0">
+      {/* 3. Composer Bar (Section 6.6) */}
+      <div className="p-4 border-t border-[#E5E7EB] bg-white shrink-0">
         {progressText && (
-          <div className="max-w-3xl mx-auto mb-2.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+          <div className="max-w-[720px] mx-auto mb-2.5 px-3 py-1.5 rounded-[8px] bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8] text-[12px] flex items-center gap-2 animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-ping" />
             <span className="font-medium">{progressText}</span>
           </div>
         )}
-        <div className="max-w-3xl mx-auto flex items-end gap-3">
+
+        {/* Selected Documents Context Chips */}
+        {selectedDocIds.length > 1 && (
+          <div className="max-w-[720px] mx-auto mb-2 flex flex-wrap gap-1.5">
+            {selectedDocIds.map((id, i) => (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-[#F3F4F6] border border-[#E5E7EB] text-[11.5px] text-[#374151]"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                <span className="truncate max-w-[160px]">{docNamesMap[id] || `Doc ${i + 1}`}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="max-w-[720px] mx-auto flex items-end gap-2.5">
+          {/* Rounded 12px input with auto-grow up to 6 lines */}
           <div className="flex-1 relative">
             <textarea
+              ref={textareaRef}
               rows={2}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
               disabled={!hasDocsSelected || isStreaming}
               placeholder={
                 hasDocsSelected
-                  ? "Ask about contractual clauses, terms, or obligations (Shift+Enter for new line)..."
+                  ? "Ask about contractual clauses, terms, or obligations (Shift+Enter for newline)..."
                   : "Select a document in the library to enable asking questions."
               }
-              className="w-full bg-stone-50 border border-stone-300 rounded-xl px-4 py-2.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white resize-none shadow-2xs disabled:bg-stone-100 disabled:cursor-not-allowed transition-all"
+              className="w-full bg-[#F9FAFB] border border-[#D1D5DB] rounded-[12px] px-3.5 py-2.5 text-[13.5px] text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:bg-white resize-none shadow-xs disabled:bg-[#F3F4F6] disabled:cursor-not-allowed transition-all leading-normal"
             />
           </div>
 
-          {/* Action buttons: Stop (during streaming) or Send */}
+          {/* Deep research toggle chip (Section 6.6) */}
+          <label
+            className={`flex items-center gap-1.5 h-10 px-3 rounded-[8px] border text-[12px] font-medium transition-colors cursor-pointer select-none shrink-0 ${
+              deepResearch
+                ? "bg-[#EFF6FF] border-[#2563EB] text-[#2563EB]"
+                : "bg-white border-[#D1D5DB] text-[#4B5563] hover:bg-[#F9FAFB]"
+            }`}
+            title="Lets the assistant look things up step by step (Part C)"
+          >
+            <input
+              type="checkbox"
+              checked={deepResearch}
+              onChange={(e) => setDeepResearch(e.target.checked)}
+              disabled={isStreaming}
+              className="hidden"
+            />
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Deep research</span>
+          </label>
+
+          {/* Send (primary) or Stop button (Section 6.6) */}
           {isStreaming ? (
             <button
               type="button"
               onClick={handleStop}
-              className="h-10 px-4 rounded-xl bg-stone-800 hover:bg-stone-900 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="h-10 px-4 rounded-[8px] bg-white border border-[#D1D5DB] hover:bg-[#F9FAFB] text-[#111827] text-[13px] font-medium flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
+              title="Stop response"
             >
-              <svg className="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
+              <Square className="w-3.5 h-3.5 text-[#B91C1C] fill-[#B91C1C]" />
               <span>Stop</span>
             </button>
           ) : (
@@ -544,33 +553,12 @@ export function ChatWorkspace({
               type="button"
               onClick={() => handleSendMessage()}
               disabled={!hasDocsSelected || !input.trim()}
-              className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="h-10 px-4 rounded-[8px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-medium flex items-center gap-1.5 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1"
             >
               <span>Ask</span>
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+              <ArrowUp className="w-4 h-4" />
             </button>
           )}
-        </div>
-
-        {/* Deep Research Toggle (Part C, C7, D-037) */}
-        <div className="max-w-3xl mx-auto flex items-center justify-between pt-2 px-1">
-          <label className="flex items-center gap-2 cursor-pointer text-xs select-none group">
-            <input
-              type="checkbox"
-              checked={deepResearch}
-              onChange={(e) => setDeepResearch(e.target.checked)}
-              disabled={isStreaming}
-              className="w-3.5 h-3.5 rounded text-indigo-600 border-stone-300 focus:ring-indigo-500 cursor-pointer"
-            />
-            <span className="font-semibold text-stone-700 group-hover:text-indigo-600 transition">
-              ⚡ Deep Research Mode
-            </span>
-            <span className="text-[11px] text-stone-400 hidden sm:inline">
-              (Multi-round autonomous research with tools: search_document, get_section, list_clauses)
-            </span>
-          </label>
         </div>
       </div>
     </div>

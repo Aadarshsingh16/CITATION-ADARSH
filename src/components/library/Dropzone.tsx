@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import type { DismissibleError, DocumentRecord } from "@/lib/types";
+import { UploadCloud, Sparkles, Loader2 } from "lucide-react";
 
 interface DropzoneProps {
   onUploadSuccess: (doc: DocumentRecord) => void;
@@ -82,16 +83,16 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 font-sans">
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${
+        className={`relative border-2 border-dashed rounded-[12px] p-4 text-center cursor-pointer transition-all duration-150 ${
           isDragOver
-            ? "border-indigo-500 bg-indigo-50/60 scale-[1.01]"
-            : "border-stone-300 hover:border-indigo-400 bg-white hover:bg-stone-50/50"
+            ? "border-[#2563EB] bg-[#EFF6FF] scale-[1.01]"
+            : "border-[#D1D5DB] hover:border-[#2563EB] bg-[#F9FAFB] hover:bg-white"
         } ${isUploading ? "opacity-75 pointer-events-none" : ""}`}
       >
         <input
@@ -105,50 +106,20 @@ export const Dropzone: React.FC<DropzoneProps> = ({
         <div className="flex flex-col items-center justify-center">
           {isUploading ? (
             <div className="flex flex-col items-center py-1">
-              <svg
-                className="animate-spin h-6 w-6 text-indigo-600 mb-2"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8H4z"
-                />
-              </svg>
-              <span className="text-xs font-semibold text-indigo-900">
+              <Loader2 className="w-6 h-6 text-[#2563EB] animate-spin mb-1.5" />
+              <span className="text-[12px] font-medium text-[#111827]">
                 Uploading and verifying...
               </span>
             </div>
           ) : (
             <>
-              <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mb-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
+              <div className="w-8 h-8 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center mb-1.5">
+                <UploadCloud className="w-4 h-4" />
               </div>
-              <p className="text-xs font-semibold text-stone-800">
-                Drop PDF or DOCX here, or <span className="text-indigo-600">browse</span>
+              <p className="text-[12.5px] font-medium text-[#111827]">
+                Drop PDF or DOCX here, or <span className="text-[#2563EB] underline">browse</span>
               </p>
-              <p className="text-[11px] text-stone-500 mt-0.5">
+              <p className="text-[11px] text-[#6B7280] mt-0.5">
                 Up to 25MB, max 400 pages
               </p>
             </>
@@ -163,22 +134,17 @@ export const Dropzone: React.FC<DropzoneProps> = ({
           void onSeedSamples();
         }}
         disabled={isSeeding || isUploading}
-        className="w-full py-2 px-3 text-xs font-medium text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+        className="w-full py-1.5 px-3 text-[12.5px] font-medium text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-[8px] border border-[#BFDBFE] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
       >
         {isSeeding ? (
           <>
-            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            Seeding sample contracts...
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>Seeding sample contracts...</span>
           </>
         ) : (
           <>
-            <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            Try with sample contracts
+            <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
+            <span>Try with sample contracts</span>
           </>
         )}
       </button>

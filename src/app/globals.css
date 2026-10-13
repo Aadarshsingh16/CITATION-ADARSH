@@ -1,28 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #fafaf9;
-  --surface: #ffffff;
-  --border: #e7e5e4;
-  --text: #1c1917;
-  --text-muted: #78716c;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --verified: #15803d;
-  --verified-bg: #f0fdf4;
-  --unverified: #b45309;
-  --unverified-bg: #fffbeb;
-  --partial: #1d4ed8;
-  --partial-bg: #eff6ff;
-  --highlight: #fde68a;
-  --highlight-alt: #fef3c7;
-  --danger: #b91c1c;
-  --danger-bg: #fef2f2;
+  /* Canvas and panels */
+  --canvas: #F6F8FF;
+  --panel: #FFFFFF;
+  --surface-1: #F9FAFB;
+  --surface-2: #F3F4F6;
+  --border: #E5E7EB;
+  --border-strong: #D1D5DB;
+  --ink: #111827;
+  --ink-2: #374151;
+  --ink-3: #4B5563;
+  --muted: #6B7280;
+
+  /* Primary */
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-soft: #EFF6FF;
+  --primary-tint: #DBEAFE;
+
+  /* State colours (each is a pair: background strip, foreground text and icon) */
+  --state-verified-bg: #DCFCE7;
+  --state-verified-fg: #15803D;
+
+  --state-unverified-bg: #FEF3C7;
+  --state-unverified-fg: #B45309;
+
+  --state-repaired-bg: #EDE9FE;
+  --state-repaired-fg: #6D28D9;
+
+  --state-info-bg: #DBEAFE;
+  --state-info-fg: #1D4ED8;
+
+  --state-pending-bg: #E5E7EB;
+  --state-pending-fg: #4B5563;
+
+  --state-danger-bg: #FEE2E2;
+  --state-danger-fg: #B91C1C;
+
+  /* Significance (comparison) */
+  --sig-high-bg: #FFEDD5;
+  --sig-high-fg: #C2410C;
+
+  --sig-medium-bg: #FEF9C3;
+  --sig-medium-fg: #A16207;
+
+  --sig-low-bg: #DBEAFE;
+  --sig-low-fg: #1D4ED8;
+
+  --sig-cosmetic-bg: #F3F4F6;
+  --sig-cosmetic-fg: #4B5563;
+
+  /* Highlights and diffs */
+  --hl-active: #FDE68A;
+  --hl-other: #BFDBFE;
+  --diff-add: #DCFCE7;
+  --diff-del: #FEE2E2;
+
+  /* Backward compatibility aliases */
+  --bg: var(--canvas);
+  --surface: var(--panel);
+  --text: var(--ink);
+  --text-muted: var(--muted);
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+  --verified: var(--state-verified-fg);
+  --verified-bg: var(--state-verified-bg);
+  --unverified: var(--state-unverified-fg);
+  --unverified-bg: var(--state-unverified-bg);
+  --partial: var(--state-info-fg);
+  --partial-bg: var(--state-info-bg);
+  --highlight: var(--hl-active);
+  --highlight-alt: var(--hl-other);
+  --danger: var(--state-danger-fg);
+  --danger-bg: var(--state-danger-bg);
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--canvas);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   margin: 0;
   padding: 0;
@@ -30,7 +86,19 @@ body {
 }
 
 /* Document & contract text styled in readable legal serif (DESIGN.md) */
-.font-contract {
-  font-family: "Georgia", "Cambria", "Times New Roman", Times, serif;
+.font-contract, .font-serif-doc {
+  font-family: "Source Serif 4", "Newsreader", "Georgia", "Cambria", "Times New Roman", Times, serif;
   line-height: 1.7;
+}
+
+/* Active PDF highlight blend */
+.pdf-highlight-active {
+  background-color: var(--hl-active);
+  mix-blend-mode: multiply;
+}
+
+.pdf-highlight-other {
+  background-color: var(--hl-other);
+  opacity: 0.6;
+  mix-blend-mode: multiply;
 }

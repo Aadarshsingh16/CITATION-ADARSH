@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
-import type { DocumentStatus } from "@/lib/types";
+import type { DocumentStatus, RejectionReason } from "@/lib/types";
+import { Check, AlertTriangle, XCircle, Loader2 } from "lucide-react";
 
 interface StatusChipProps {
   status: DocumentStatus;
+  rejectReason?: RejectionReason | string | null;
   detail?: string | null;
 }
 
@@ -13,75 +15,66 @@ export const StatusChip: React.FC<StatusChipProps> = ({ status, detail }) => {
     case "ready":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#86EFAC]"
           title="Document extracted, chunked, and ready for queries"
         >
-          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
-          Ready
+          <Check className="w-3 h-3 text-[#15803D]" />
+          <span>Ready</span>
         </span>
       );
 
     case "extracting":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-indigo-800 bg-indigo-50 border border-indigo-200 animate-pulse"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[11px] font-medium text-[#2563EB] bg-[#EFF6FF] border border-[#BFDBFE] animate-pulse"
           title={detail || "Extracting text layer and page offsets"}
         >
-          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-          Extracting
+          <Loader2 className="w-3 h-3 animate-spin text-[#2563EB]" />
+          <span>Extracting</span>
         </span>
       );
 
     case "indexing":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-blue-800 bg-blue-50 border border-blue-200 animate-pulse"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[11px] font-medium text-[#2563EB] bg-[#EFF6FF] border border-[#BFDBFE] animate-pulse"
           title={detail || "Building clause chunks and BM25 index"}
         >
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-          Indexing
+          <Loader2 className="w-3 h-3 animate-spin text-[#2563EB]" />
+          <span>Indexing</span>
         </span>
       );
 
     case "uploading":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-stone-700 bg-stone-100 border border-stone-200"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[11px] font-medium text-[#4B5563] bg-[#E5E7EB] border border-[#D1D5DB]"
           title="Saving file to database"
         >
-          <svg className="w-3.5 h-3.5 animate-spin text-stone-500" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          Uploading
+          <Loader2 className="w-3 h-3 animate-spin text-[#6B7280]" />
+          <span>Uploading</span>
         </span>
       );
 
     case "rejected":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-semibold text-[#B45309] bg-[#FEF3C7] border border-dashed border-[#FCD34D]"
           title={detail || "Rejected by quality gate"}
         >
-          <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          Rejected
+          <AlertTriangle className="w-3 h-3 text-[#B45309]" />
+          <span>Rejected</span>
         </span>
       );
 
     case "failed":
       return (
         <span
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-red-800 bg-red-50 border border-red-200"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-semibold text-[#B91C1C] bg-[#FEE2E2] border border-[#FECACA]"
           title={detail || "Extraction failed"}
         >
-          <svg className="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Failed
+          <XCircle className="w-3 h-3 text-[#B91C1C]" />
+          <span>Failed</span>
         </span>
       );
 

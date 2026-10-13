@@ -9,6 +9,8 @@ import {
   type QuoteOccurrenceInfo,
 } from "@/lib/citation-mapping";
 import { PdfPageView } from "./PdfPageView";
+import { DocBadge } from "../ui/DocBadge";
+import { X, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 
 export interface ActiveQuoteCitation {
   text: string;
@@ -55,21 +57,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [scale, setScale] = useState(1.15);
   const [forceFallback, setForceFallback] = useState(false);
   const [activeOccurrenceIndex, setActiveOccurrenceIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Keyboard shortcut: Esc to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  // Fetch document text and metadata
+  // Load document text and pages
   useEffect(() => {
     if (!documentId) {
       setData(null);
@@ -77,32 +69,41 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       return;
     }
 
+    let isCancelled = false;
     setLoading(true);
     setError(null);
-    setPdfDoc(null);
 
-    fetch(`/api/documents/${documentId}/text`)
-      .then((res) => {
+    async function loadDoc() {
+      try {
+        const res = await fetch(`/api/documents/${documentId}/text`);
         if (!res.ok) throw new Error("Failed to load document text");
-        return res.json();
-      })
-      .then((d) => {
-        // Attach pageText slices to each page for fallback views
-        if (d.text && d.pages) {
-          d.pages = d.pages.map((p: PageRecord) => ({
-            ...p,
-            pageText: d.text.slice(p.startOffset, p.endOffset),
-          }));
+        const docData = await res.json();
+        if (!isCancelled) {
+          setData(docData.document);
         }
-        setData(d);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadDoc();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [documentId]);
 
-  // Load PDF file via pdfjs-dist if mime is PDF
-  const isPdf = Boolean(data?.mime?.includes("pdf"));
+  const isPdf =
+    data?.mime === "application/pdf" ||
+    (data?.filename && data.filename.toLowerCase().endsWith(".pdf"));
 
+  // Load PDF.js document representation
   useEffect(() => {
     if (!documentId || !isPdf) {
       setPdfDoc(null);
@@ -123,14 +124,13 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           isEvalSupported: false,
         });
 
-        const loadedDoc = await loadingTask.promise;
+        const doc = await loadingTask.promise;
         if (!isCancelled) {
-          setPdfDoc(loadedDoc);
+          setPdfDoc(doc);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setPdfError(msg);
+          setPdfError(err instanceof Error ? err.message : "Failed to load PDF file");
         }
       } finally {
         if (!isCancelled) {
@@ -181,56 +181,71 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   }, [activeOccurrenceIndex, activePageRanges]);
 
+  const handleCopyQuote = async () => {
+    if (!activeQuote?.text) return;
+    try {
+      await navigator.clipboard.writeText(activeQuote.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   if (!documentId) return null;
 
   const totalPages = data?.pageCount || data?.pages?.length || 1;
+  const activePageDisplay =
+    activePageRanges.length > 0 ? activePageRanges[0].pageNumber : 1;
+
+  // Footer location string (Section 6.7)
+  let footerLocation = isPdf ? `Page ${activePageDisplay}` : `Section ${activePageDisplay}`;
+  if (currentMatch) {
+    footerLocation += ` · Offset ${currentMatch.start}`;
+  }
 
   return (
-    <aside
-      className="w-[520px] max-w-[85vw] border-l border-stone-200 bg-stone-50/50 flex flex-col h-full shrink-0 shadow-2xl z-30 transition-all"
+    <div
+      className="flex flex-col h-full bg-white font-sans select-none overflow-hidden"
       aria-label="Document citation viewer"
     >
-      {/* 1. Header Toolbar */}
-      <div className="p-3 border-b border-stone-200 bg-white flex items-center justify-between gap-3 shrink-0">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold text-stone-900 truncate" title={data?.filename}>
+      {/* 1. Header Toolbar (Section 6.7) */}
+      <div className="px-4 py-3 border-b border-[#E5E7EB] bg-white flex items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <DocBadge filename={data?.filename} mime={data?.mime} />
+          <div className="min-w-0">
+            <h3
+              className="text-[13.5px] font-semibold text-[#111827] truncate leading-tight"
+              title={data?.filename}
+            >
               {data?.filename || "Loading document..."}
             </h3>
-            {isPdf && !forceFallback && (
-              <span className="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-sm border border-emerald-200">
-                Rendered PDF
-              </span>
-            )}
-            {(!isPdf || forceFallback) && (
-              <span className="text-[10px] font-medium bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-sm border border-amber-200">
-                {isPdf ? "Text Fallback" : "Section Text"}
-              </span>
-            )}
+            <p className="text-[11px] text-[#6B7280]">
+              Page {activePageDisplay} of {totalPages}
+            </p>
           </div>
-          <p className="text-[11px] text-stone-500 mt-0.5">
-            {totalPages} {isPdf ? "pages" : "virtual sections"}
-          </p>
         </div>
 
         {/* Action controls */}
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Zoom controls (PDF only) */}
           {isPdf && !forceFallback && (
-            <div className="flex items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200 mr-1">
+            <div className="flex items-center bg-[#F3F4F6] rounded-[6px] p-0.5 border border-[#E5E7EB]">
               <button
+                type="button"
                 onClick={() => setScale((s) => Math.max(0.75, s - 0.15))}
-                className="px-2 py-0.5 text-xs text-stone-600 hover:text-stone-900 font-bold"
+                className="px-1.5 py-0.5 text-[11px] text-[#4B5563] hover:text-[#111827] font-semibold cursor-pointer"
                 title="Zoom out"
               >
                 -
               </button>
-              <span className="text-[10px] font-mono text-stone-600 px-1">
+              <span className="text-[10px] font-mono text-[#6B7280] px-1">
                 {Math.round(scale * 100)}%
               </span>
               <button
+                type="button"
                 onClick={() => setScale((s) => Math.min(2.0, s + 0.15))}
-                className="px-2 py-0.5 text-xs text-stone-600 hover:text-stone-900 font-bold"
+                className="px-1.5 py-0.5 text-[11px] text-[#4B5563] hover:text-[#111827] font-semibold cursor-pointer"
                 title="Zoom in"
               >
                 +
@@ -241,82 +256,76 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Force Text Fallback Toggle (D-034 Exit Gate) */}
           {isPdf && (
             <button
+              type="button"
               onClick={() => setForceFallback((f) => !f)}
-              className={`px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+              className={`px-2 py-1 rounded-[6px] text-[11px] font-medium border transition-colors cursor-pointer ${
                 forceFallback
-                  ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs"
-                  : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                  ? "bg-[#FEF3C7] text-[#B45309] border-[#FCD34D]"
+                  : "bg-white text-[#4B5563] border-[#E5E7EB] hover:bg-[#F9FAFB]"
               }`}
-              title="Force text fallback view (D-034 verification)"
+              title="Force text fallback view"
             >
               {forceFallback ? "PDF View" : "Fallback"}
             </button>
           )}
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
+            className="p-1 text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] rounded-[6px] transition-colors cursor-pointer"
             title="Close viewer (Esc)"
             aria-label="Close viewer"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* 2. Active Citation Occurrence Toolbar (B4, B1) */}
+      {/* 2. Active Citation Occurrence Bar (Section 6.7) */}
       {activeQuote && occurrenceInfo.totalOccurrences > 0 && (
-        <div className="bg-amber-50/90 border-b border-amber-200 px-3.5 py-2 flex items-center justify-between text-xs text-amber-900 shrink-0">
+        <div className="bg-[#FEF3C7] border-b border-[#FCD34D] px-3.5 py-2 flex items-center justify-between text-[12px] text-[#B45309] shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-            <div className="truncate">
-              <span className="font-semibold text-amber-950">
-                Occurrence {activeOccurrenceIndex + 1} of {occurrenceInfo.totalOccurrences}
-              </span>
-              {activePageRanges.length > 0 && (
-                <span className="ml-2 text-[11px] text-amber-800">
-                  {activePageRanges.length === 1
-                    ? `(Page ${activePageRanges[0].pageNumber})`
-                    : `(Pages ${activePageRanges[0].pageNumber}–${activePageRanges[activePageRanges.length - 1].pageNumber})`}
-                </span>
-              )}
+            <span className="w-2 h-2 rounded-full bg-[#B45309] shrink-0" />
+            <div className="truncate font-semibold">
+              Occurrence {activeOccurrenceIndex + 1} of {occurrenceInfo.totalOccurrences}
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 ml-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {occurrenceInfo.totalOccurrences > 1 && (
-              <div className="flex items-center gap-1 mr-1">
+              <div className="flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={() =>
                     setActiveOccurrenceIndex((idx) =>
                       idx > 0 ? idx - 1 : occurrenceInfo.totalOccurrences - 1
                     )
                   }
-                  className="px-2 py-0.5 rounded-sm bg-white border border-amber-200 text-amber-900 text-xs font-semibold hover:bg-amber-100/80 transition-colors"
+                  className="p-1 rounded-[4px] bg-white border border-[#FCD34D] text-[#B45309] hover:bg-[#FEF3C7] cursor-pointer"
                   title="Previous occurrence"
                 >
-                  &larr; Prev
+                  <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() =>
                     setActiveOccurrenceIndex((idx) =>
                       idx < occurrenceInfo.totalOccurrences - 1 ? idx + 1 : 0
                     )
                   }
-                  className="px-2 py-0.5 rounded-sm bg-white border border-amber-200 text-amber-900 text-xs font-semibold hover:bg-amber-100/80 transition-colors"
+                  className="p-1 rounded-[4px] bg-white border border-[#FCD34D] text-[#B45309] hover:bg-[#FEF3C7] cursor-pointer"
                   title="Next occurrence"
                 >
-                  Next &rarr;
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
 
             {onClearActiveQuote && (
               <button
+                type="button"
                 onClick={onClearActiveQuote}
-                className="text-[11px] text-amber-700 hover:text-amber-950 underline ml-1"
+                className="text-[11.5px] text-[#B45309] hover:underline ml-1 cursor-pointer"
               >
                 Clear
               </button>
@@ -325,102 +334,78 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
       )}
 
-      {/* Quote not found notification */}
-      {activeQuote && occurrenceInfo.totalOccurrences === 0 && (
-        <div className="bg-stone-100 border-b border-stone-200 px-3.5 py-2 text-xs text-stone-600 flex items-center justify-between">
-          <span>Quote wording could not be located in this document.</span>
-          {onClearActiveQuote && (
-            <button onClick={onClearActiveQuote} className="underline text-[11px] text-stone-500">
-              Dismiss
-            </button>
-          )}
+      {/* Fallback notification notice */}
+      {forceFallback && (
+        <div className="px-3.5 py-1.5 bg-[#EFF6FF] border-b border-[#BFDBFE] text-[11.5px] text-[#1D4ED8]">
+          Showing extracted text for this page.
         </div>
       )}
 
-      {/* Unreadable pages warning */}
-      {data?.unreadablePages && data.unreadablePages.length > 0 && (
-        <div className="bg-amber-50 border-b border-amber-200 px-3 py-1.5 text-xs text-amber-800 flex items-center gap-2">
-          <svg className="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span className="text-[11px]">
-            Pages {data.unreadablePages.join(", ")} contain sparse or unreadable text.
-          </span>
-        </div>
-      )}
-
-      {/* 3. Main Viewer Scroll Area */}
+      {/* 3. Main Viewer Scroll Canvas */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-6"
+        className="flex-1 overflow-y-auto p-4 bg-[#F9FAFB] select-text"
       >
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-24 text-stone-400 gap-2">
-            <svg className="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            <p className="text-xs">Loading document...</p>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-[#6B7280] text-[13px]">
+            <div className="w-6 h-6 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin mb-2" />
+            <p>Loading document text...</p>
           </div>
-        )}
-
-        {error && (
-          <div className="p-4 bg-red-50 text-red-800 text-xs rounded-lg border border-red-200">
-            {error}
+        ) : error ? (
+          <div className="p-4 rounded-[8px] bg-[#FEE2E2] border border-[#FECACA] text-[13px] text-[#B91C1C]">
+            <p className="font-semibold mb-1">Failed to display document</p>
+            <p className="text-[12px]">{error}</p>
           </div>
-        )}
-
-        {/* PDF Render Mode */}
-        {isPdf && !forceFallback && !loading && (
-          <div className="space-y-6">
+        ) : isPdf && !forceFallback ? (
+          <div className="flex flex-col items-center gap-4">
             {pdfLoading && (
-              <div className="py-12 text-center text-xs text-stone-400 flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-stone-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Initializing PDF engine...
+              <div className="py-6 text-center text-[#6B7280] text-[12px]">
+                <div className="w-5 h-5 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <span>Rendering PDF pages...</span>
               </div>
             )}
 
             {pdfError && (
-              <div className="p-3 bg-red-50 text-red-800 text-xs rounded-lg border border-red-200">
-                PDF engine error: {pdfError}. Falling back to text view.
+              <div className="w-full p-3 rounded-[8px] bg-[#FEF3C7] border border-[#FCD34D] text-[12px] text-[#B45309] mb-3">
+                <p className="font-semibold">PDF renderer notice</p>
+                <p>{pdfError}. Displaying canonical text view.</p>
               </div>
             )}
 
-            {pdfDoc &&
-              data?.pages?.map((pageRecord) => {
-                const quoteRangeForPage = activePageRanges.find(
-                  (r) => r.pageNumber === pageRecord.pageNumber
-                );
-
-                return (
-                  <PdfPageView
-                    key={pageRecord.id || pageRecord.pageNumber}
-                    pdfDoc={pdfDoc}
-                    pageNumber={pageRecord.pageNumber}
-                    pageRecord={pageRecord}
-                    pageQuoteRange={quoteRangeForPage}
-                    isActivePage={Boolean(quoteRangeForPage)}
-                    forceFallback={forceFallback}
-                    scale={scale}
-                  />
-                );
-              })}
-          </div>
-        )}
-
-        {/* DOCX or Forced Text Fallback Mode */}
-        {(!isPdf || forceFallback) && !loading && data && (
-          <div className="space-y-5">
-            {data.pages && data.pages.length > 0 ? (
+            {/* Render PDF pages */}
+            {data?.pages && data.pages.length > 0 ? (
               data.pages.map((p) => {
                 const quoteRangeForPage = activePageRanges.find(
                   (r) => r.pageNumber === p.pageNumber
                 );
-                const pageText = (p as any).pageText || data.text?.slice(p.startOffset, p.endOffset) || "";
-
+                return (
+                  <PdfPageView
+                    key={p.id || p.pageNumber}
+                    pdfDoc={pdfDoc}
+                    pageNumber={p.pageNumber}
+                    pageRecord={p}
+                    pageQuoteRange={quoteRangeForPage}
+                    isActivePage={activePageRanges.some((r) => r.pageNumber === p.pageNumber)}
+                    forceFallback={forceFallback || !!pdfError}
+                    scale={scale}
+                  />
+                );
+              })
+            ) : (
+              <div className="text-[13px] text-[#6B7280] py-8">
+                No rendered pages available.
+              </div>
+            )}
+          </div>
+        ) : (
+          /* DOCX and Fallback Canonical Text View */
+          <div className="space-y-4 max-w-2xl mx-auto">
+            {data?.pages && data.pages.length > 0 ? (
+              data.pages.map((p) => {
+                const quoteRangeForPage = activePageRanges.find(
+                  (r) => r.pageNumber === p.pageNumber
+                );
+                const pageText = (p as any).pageText || "";
                 const sliced = quoteRangeForPage
                   ? sliceTextWithHighlight(pageText, quoteRangeForPage, p.startOffset)
                   : { before: pageText, highlighted: "", after: "" };
@@ -429,41 +414,68 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   <div
                     key={p.id || p.pageNumber}
                     data-page-number={p.pageNumber}
-                    className={`rounded-xl border bg-white p-4 shadow-2xs transition-all ${
-                      quoteRangeForPage ? "border-amber-400 ring-2 ring-amber-300" : "border-stone-200"
+                    className={`rounded-[12px] border bg-white p-4 shadow-xs transition-all ${
+                      quoteRangeForPage
+                        ? "border-[#FCD34D] ring-2 ring-[#FEF3C7]"
+                        : "border-[#E5E7EB]"
                     }`}
                   >
-                    <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-stone-100 text-[11px] font-semibold text-stone-600">
+                    <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#F3F4F6] text-[11.5px] font-semibold text-[#6B7280]">
                       <span>{isPdf ? `Page ${p.pageNumber}` : `Section ${p.pageNumber}`}</span>
-                      <span className="text-stone-400 font-mono text-[9px]">
+                      <span className="text-[#9CA3AF] font-mono text-[10px]">
                         [{p.startOffset}..{p.endOffset}]
                       </span>
                     </div>
 
-                    <div className="font-contract whitespace-pre-wrap leading-relaxed text-[13px] text-stone-800">
+                    <div className="font-contract whitespace-pre-wrap leading-relaxed text-[14px] text-[#111827]">
                       {sliced.highlighted ? (
                         <>
                           {sliced.before}
-                          <mark className="bg-amber-200/90 text-stone-950 font-semibold px-0.5 rounded-xs shadow-2xs">
+                          <mark className="bg-[#FEF3C7] text-[#111827] font-semibold px-0.5 rounded-[2px]">
                             {sliced.highlighted}
                           </mark>
                           {sliced.after}
                         </>
                       ) : (
-                        sliced.before || <span className="italic text-stone-400">Empty</span>
+                        sliced.before || <span className="italic text-[#9CA3AF]">Empty</span>
                       )}
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="font-contract whitespace-pre-wrap text-stone-800 leading-relaxed text-[13px] p-4 bg-white rounded-xl border border-stone-200">
-                {data.text || "No text available."}
+              <div className="font-contract whitespace-pre-wrap text-[#111827] leading-relaxed text-[14px] p-4 bg-white rounded-[12px] border border-[#E5E7EB]">
+                {data?.text || "No text available."}
               </div>
             )}
           </div>
         )}
       </div>
-    </aside>
+
+      {/* 4. Footer Strip (Section 6.7) */}
+      {activeQuote && (
+        <div className="px-4 py-2 bg-[#F3F4F6] border-t border-[#E5E7EB] flex items-center justify-between text-[12.5px] shrink-0">
+          <span className="text-[#6B7280] font-medium truncate">{footerLocation}</span>
+
+          <button
+            type="button"
+            onClick={handleCopyQuote}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium text-[#4B5563] hover:text-[#111827] hover:bg-white rounded-[6px] border border-transparent hover:border-[#D1D5DB] transition-colors cursor-pointer"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-[#15803D]" />
+                <span className="text-[#15803D]">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-[#6B7280]" />
+                <span>Copy quote</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
   );
 };

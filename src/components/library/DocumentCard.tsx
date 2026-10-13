@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import type { DocumentRecord } from "@/lib/types";
+import { DocBadge } from "../ui/DocBadge";
 import { StatusChip } from "./StatusChip";
+import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
 
 interface DocumentCardProps {
   document: DocumentRecord;
@@ -18,6 +20,12 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr?: string | Date | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({
@@ -54,18 +62,33 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     }
   };
 
-  const isProcessing = doc.status === "uploading" || doc.status === "extracting" || doc.status === "indexing";
+  const isProcessing =
+    doc.status === "uploading" || doc.status === "extracting" || doc.status === "indexing";
+
+  // Build meta line: "128 pages · 2.1 MB · 13 Oct"
+  const metaParts: string[] = [];
+  if (doc.pageCount) {
+    metaParts.push(`${doc.pageCount} ${doc.pageCount === 1 ? "page" : "pages"}`);
+  }
+  metaParts.push(formatBytes(doc.sizeBytes));
+  if (doc.createdAt) {
+    metaParts.push(formatDate(doc.createdAt));
+  }
+  const metaLine = metaParts.join(" · ");
 
   return (
     <div
       onClick={() => onOpen(doc.id)}
-      className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${
+      className={`group relative p-3 rounded-[12px] border transition-all cursor-pointer font-sans ${
         isActive
-          ? "border-indigo-600 bg-indigo-50/40 shadow-xs ring-1 ring-indigo-500/20"
-          : "border-stone-200 bg-white hover:border-stone-300 hover:shadow-xs"
+          ? "border-[#2563EB] bg-[#EFF6FF] shadow-xs ring-1 ring-[#2563EB]/20"
+          : isSelected
+          ? "border-[#BFDBFE] bg-[#F6F8FF]"
+          : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB] hover:shadow-xs"
       }`}
     >
       <div className="flex items-start gap-2.5">
+        {/* Selection Checkbox */}
         <input
           type="checkbox"
           checked={isSelected}
@@ -74,115 +97,108 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             onSelect(doc.id, e.target.checked);
           }}
           onClick={(e) => e.stopPropagation()}
-          className="mt-1 h-4 w-4 rounded-sm border-stone-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-          title="Select for multi-document question or comparison"
+          className="mt-0.5 rounded-[4px] border-[#D1D5DB] text-[#2563EB] focus:ring-[#2563EB] cursor-pointer"
+          aria-label={`Select ${doc.filename}`}
         />
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1.5 mb-1">
+          {/* Header Row: Badge & Filename */}
+          <div className="flex items-center gap-1.5 mb-1">
+            <DocBadge filename={doc.filename} mime={doc.mime} />
             <h4
-              className="text-xs font-semibold text-stone-900 truncate tracking-tight"
+              className="text-[13px] font-semibold text-[#111827] truncate leading-snug flex-1"
               title={doc.filename}
             >
               {doc.filename}
             </h4>
-
-            <div className="flex items-center gap-1">
-              <StatusChip status={doc.status} detail={doc.statusDetail} />
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowConfirmDelete(true);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-red-600 rounded-sm hover:bg-stone-100 transition-all"
-                title="Delete document"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
           </div>
 
-          {/* Metadata row */}
-          <div className="flex items-center gap-2 text-[11px] text-stone-500">
-            <span>{formatBytes(doc.sizeBytes)}</span>
-            {doc.pageCount && (
-              <>
-                <span>•</span>
-                <span>{doc.pageCount} {doc.mime.includes("pdf") ? "pages" : "sections"}</span>
-              </>
-            )}
-            {doc.isDuplicate && (
-              <>
-                <span>•</span>
-                <span className="text-amber-700 bg-amber-50 px-1 rounded-sm border border-amber-200/60" title="Duplicate copy of existing file">
-                  Duplicate
+          {/* Meta line */}
+          <div className="text-[11.5px] text-[#6B7280] mb-2 truncate">
+            {metaLine}
+          </div>
+
+          {/* Duplicate soft alert notice (D-046) */}
+          {doc.isDuplicate && (
+            <div className="mb-2 px-2 py-0.5 rounded-[4px] bg-[#FEF3C7] text-[#B45309] text-[10.5px] font-medium flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 shrink-0" />
+              <span>Duplicate content detected</span>
+            </div>
+          )}
+
+          {/* Status or Progress Row */}
+          {isProcessing ? (
+            <div className="space-y-1.5 mt-2">
+              <div className="flex items-center justify-between text-[11px] text-[#2563EB] font-medium">
+                <span className="truncate">{doc.statusDetail || "Processing..."}</span>
+                <span className="capitalize text-[10px] bg-[#EFF6FF] px-1.5 py-0.5 rounded-[4px]">
+                  {doc.status}
                 </span>
-              </>
-            )}
-          </div>
-
-          {/* Progress or status detail */}
-          {doc.statusDetail && isProcessing && (
-            <div className="mt-2 text-[11px] text-indigo-700 font-medium">
-              <div className="flex items-center justify-between mb-1">
-                <span className="truncate">{doc.statusDetail}</span>
               </div>
-              <div className="h-1 w-full bg-indigo-100 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-600 rounded-full animate-pulse w-3/4" />
+              {/* Determinate / Indeterminate progress line */}
+              <div className="w-full bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
+                <div className="bg-[#2563EB] h-1.5 rounded-full animate-pulse w-3/4" />
               </div>
             </div>
-          )}
+          ) : (
+            <div className="flex items-center justify-between mt-1">
+              <StatusChip status={doc.status} rejectReason={doc.rejectReason} />
 
-          {/* Failure & Retry button (D-040) */}
-          {doc.status === "failed" && (
-            <div className="mt-2 p-1.5 bg-red-50/70 border border-red-200/60 rounded-md flex items-center justify-between gap-1.5">
-              <span className="text-[11px] text-red-800 truncate" title={doc.statusDetail || "Failed"}>
-                {doc.statusDetail || "Interrupted"}
-              </span>
-              <button
-                type="button"
-                onClick={handleRetry}
-                disabled={isRetrying}
-                className="shrink-0 text-[10px] font-semibold text-red-700 bg-white hover:bg-red-50 border border-red-300 px-2 py-0.5 rounded-sm transition-colors"
-              >
-                {isRetrying ? "Retrying..." : "Retry"}
-              </button>
+              {/* Action icons */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {doc.status === "failed" || doc.status === "rejected" ? (
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="p-1 text-[#2563EB] hover:bg-[#EFF6FF] rounded-[4px] transition-colors cursor-pointer"
+                    title="Retry processing"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isRetrying ? "animate-spin" : ""}`} />
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowConfirmDelete(true);
+                  }}
+                  className="p-1 text-[#6B7280] hover:text-[#B91C1C] hover:bg-[#FEE2E2] rounded-[4px] transition-colors cursor-pointer"
+                  title="Delete document"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-          )}
-
-          {/* Unreadable pages warning */}
-          {doc.unreadablePages && doc.unreadablePages.length > 0 && (
-            <p className="mt-1.5 text-[10px] text-amber-700 bg-amber-50/60 p-1 rounded-sm border border-amber-200/60">
-              Unreadable pages: {doc.unreadablePages.join(", ")}
-            </p>
           )}
         </div>
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Delete Confirmation Dialog */}
       {showConfirmDelete && (
         <div
+          className="mt-2.5 p-2.5 rounded-[8px] bg-[#FEE2E2] border border-[#FECACA] text-[12px] text-[#B91C1C]"
           onClick={(e) => e.stopPropagation()}
-          className="absolute inset-0 bg-white/95 backdrop-blur-xs rounded-xl p-3 flex flex-col justify-center items-center text-center z-10 border border-red-200"
         >
-          <p className="text-xs font-semibold text-stone-900 mb-2">
-            Delete "{doc.filename}"?
-          </p>
-          <div className="flex items-center gap-2">
+          <p className="font-semibold mb-1">Delete "{doc.filename}"?</p>
+          <p className="text-[11px] text-[#991B1B] mb-2">This cannot be undone.</p>
+          <div className="flex items-center gap-2 justify-end">
             <button
-              onClick={() => setShowConfirmDelete(false)}
-              className="text-[11px] px-2.5 py-1 text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-md transition-colors"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowConfirmDelete(false);
+              }}
+              className="px-2 py-0.5 rounded-[4px] bg-white text-[#4B5563] border border-[#D1D5DB] text-[11px] font-medium hover:bg-[#F9FAFB] cursor-pointer"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="text-[11px] px-2.5 py-1 text-white bg-red-600 hover:bg-red-700 rounded-md font-medium transition-colors"
+              className="px-2 py-0.5 rounded-[4px] bg-[#B91C1C] text-white text-[11px] font-semibold hover:bg-[#991B1B] cursor-pointer"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </button>

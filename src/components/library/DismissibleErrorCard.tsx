@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { DismissibleError } from "@/lib/types";
+import { AlertTriangle, X } from "lucide-react";
 
 interface DismissibleErrorCardProps {
   error: DismissibleError;
@@ -12,30 +13,18 @@ export const DismissibleErrorCard: React.FC<DismissibleErrorCardProps> = ({ erro
   return (
     <div
       role="alert"
-      className="p-3.5 mb-3 bg-red-50 border border-red-200 rounded-lg shadow-xs text-sm transition-all"
+      className="p-3 mb-2.5 bg-[#FEF3C7]/60 border border-[#FCD34D] rounded-[10px] shadow-xs text-[12px] font-sans transition-all"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2.5">
-          <svg
-            className="w-5 h-5 text-red-600 mt-0.5 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <div>
-            <div className="font-semibold text-red-900 truncate max-w-[200px]" title={error.filename}>
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-[#B45309] mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <div className="font-semibold text-[#92400E] truncate max-w-[190px]" title={error.filename}>
               {error.filename}
             </div>
-            <p className="text-red-800 mt-0.5 leading-snug">{error.message}</p>
+            <p className="text-[#B45309] mt-0.5 leading-snug">{error.message}</p>
             {error.nextStep && (
-              <p className="text-xs text-red-700 mt-1 font-medium bg-red-100/60 p-1.5 rounded-sm">
+              <p className="text-[11px] text-[#78350F] mt-1 font-medium bg-white/70 p-1.5 rounded-[6px] border border-[#FCD34D]/50">
                 Next step: {error.nextStep}
               </p>
             )}
@@ -43,14 +32,13 @@ export const DismissibleErrorCard: React.FC<DismissibleErrorCardProps> = ({ erro
         </div>
 
         <button
+          type="button"
           onClick={() => onDismiss(error.id)}
-          className="text-red-400 hover:text-red-700 p-1 rounded-sm hover:bg-red-100/80 transition-colors"
+          className="text-[#92400E] hover:text-[#78350F] p-1 rounded-[4px] hover:bg-white/60 transition-colors cursor-pointer shrink-0"
           title="Dismiss notice"
           aria-label="Dismiss notice"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
