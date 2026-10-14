@@ -4,7 +4,7 @@
 > Every factual assertion is strictly grounded in verbatim quotes programmatically verified against canonical contract text before being presented to the user.
 
 > 🌐 **Live Deployed App**: [**https://citation-analyser.onrender.com**](https://citation-analyser.onrender.com)  
-> 🎥 **Demo Video**: *(Paste Loom / YouTube video link here)*
+> 🎥 **Demo Video**: [**https://jam.dev/c/3ea81463-26f3-46e8-b1b6-ba61a94a9d3c**](https://jam.dev/c/3ea81463-26f3-46e8-b1b6-ba61a94a9d3c)
 
 ---
 
