@@ -27,28 +27,28 @@ Contract Analyser is a legal web application designed for objective, grounded co
 ### 1. Upload & Document Library
 Document management supporting searchable PDFs and DOCX files. Displays file glyphs, page counts, processing statuses, and quality gate notifications for encrypted files or scanned documents lacking a text layer, alongside 1-click sample contract seeding.
 
-![Upload and Document Library](docs/screenshots/01-upload-and-library.png)
+![Upload and Document Library](public/screenshots/01-upload-and-library.png)
 
 ---
 
 ### 2. Chat with Verified Quotes
 Interactive legal chat where every assertion is backed by programmatic quotes. The evidence margin displays green `Verified` badges, source file tags, and quick actions to copy quotes or inspect them in the document.
 
-![Chat with Verified Quotes](docs/screenshots/02-chat-verified-quotes.png)
+![Chat with Verified Quotes](public/screenshots/02-chat-verified-quotes.png)
 
 ---
 
 ### 3. Real PDF Canvas Citation Highlighting
 Clicking a quote opens the Reading Desk, auto-scrolls, and applies a marker highlight directly over the rendered text layer on the PDF canvas with a visual pulse sweep.
 
-![Real PDF Canvas Citation Highlighting](docs/screenshots/03-citation-highlighting.png)
+![Real PDF Canvas Citation Highlighting](public/screenshots/03-citation-highlighting.png)
 
 ---
 
 ### 4. Document Version Comparison
 Fixed split workspace comparing contract revisions. Features a substantive headline summary, contract Spine change map, filter chips, sort controls, and side-by-side / inline redline diffing with seal underlines for additions and redline strikethroughs for deletions.
 
-![Document Version Comparison](docs/screenshots/04-contract-comparison.png)
+![Document Version Comparison](public/screenshots/04-contract-comparison.png)
 
 ---
 

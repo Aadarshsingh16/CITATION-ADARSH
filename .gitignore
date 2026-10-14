@@ -47,7 +47,10 @@ next-env.d.ts
 /data/
 postgres_data/
 
-# local files
+# local files & documentation (strictly local, never pushed to git)
+START.md
+docs/
+.githooks/
 *.pdf
 ASSIGNMENT*.pdf
 .agent/
