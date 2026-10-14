@@ -3,6 +3,7 @@
 > A high-precision contract analysis, verification, and comparison system built with Next.js 16 (Turbopack), TypeScript, PostgreSQL, and PDF.js.
 > Every factual assertion is strictly grounded in verbatim quotes programmatically verified against canonical contract text before being presented to the user.
 
+> 🌐 **Live Deployed App**: [**https://citation-analyser.onrender.com**](https://citation-analyser.onrender.com)  
 > 🚀 **Quickstart**: For step-by-step setup, database startup, and testing instructions, see [**`START.md`**](START.md).
 
 ---
