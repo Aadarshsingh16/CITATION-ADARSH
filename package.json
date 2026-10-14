@@ -10,7 +10,7 @@
     "deploy": "npm run db:migrate && next start -p ${PORT:-3000}",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file=.env src/server/db/migrate.ts",
+    "db:migrate": "tsx src/server/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "llm:check": "tsx scripts/llm-check.ts",
