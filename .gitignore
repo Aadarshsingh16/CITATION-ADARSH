@@ -48,8 +48,13 @@ next-env.d.ts
 postgres_data/
 
 # local files
+*.pdf
 ASSIGNMENT*.pdf
+.agent/
 .agents/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 graphify-out/
 docs/design-reference/
 refference_design/
