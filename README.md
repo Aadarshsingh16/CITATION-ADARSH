@@ -1,81 +1,82 @@
 # Contract Analyser
 
-> A high-precision contract analysis, verification, and comparison system built with Next.js 16 (Turbopack), TypeScript, PostgreSQL, and PDF.js.
+> A high-precision contract analysis, verification, and comparison system built with Next.js 16 (Turbopack), TypeScript, PostgreSQL, and PDF.js.  
 > Every factual assertion is strictly grounded in verbatim quotes programmatically verified against canonical contract text before being presented to the user.
 
 > 🌐 **Live Deployed App**: [**https://citation-analyser.onrender.com**](https://citation-analyser.onrender.com)  
-> 🚀 **Quickstart**: For step-by-step setup, database startup, and testing instructions, see [**`START.md`**](START.md).
+> 🚀 **Quickstart Guide**: [**`START.md`**](START.md)  
+> 📝 **Submission Reflection Note**: [**`docs/NOTE.md`**](docs/NOTE.md)  
+> 🎥 **Demo Video Walkthrough Script**: [**`docs/DEMO_SCRIPT.md`**](docs/DEMO_SCRIPT.md)
 
 ---
 
-## What It Does
+## What the App Does
 
-Upload legal contracts (searchable PDF or DOCX), query them in natural language, and receive precise, objective answers.
-- **Strict Verbatim Quotations**: Answers are backed by programmatic inline `<q>` citations verified against the document before display. If a quote is paraphrased, altered, or hallucinated, it is clearly flagged as `unverified` and never represented as genuine.
-- **Absence Honesty**: When a clause, penalty, or topic is not in the contract, the system explicitly reports that it was not found rather than inventing plausible legal terms.
-- **Real PDF Canvas Highlighting**: Clicking any citation instantly navigates the document viewer to the exact page, auto-scrolls, and highlights the exact words on the rendered PDF canvas across multiple lines or page boundaries.
-- **Large-Document Scaling & Coverage**: For lengthy contracts (e.g. 100+ pages), queries route dynamically between full-context, map-reduce, and BM25 retrieval. Answers provide an explicit coverage tracker and use hedged wording when only partial sections were read.
-- **Multi-Document Comparative Analysis**: Ask questions across multiple agreements simultaneously. The model structures answers by topic side-by-side, strictly attributing quotes to their source document.
-- **Contract Version Comparison**: Aligns two contract versions, extracts numerical signals (liability caps, notice days, interest rates), highlights substantive vs cosmetic changes, and validates summaries against hallucinated numbers (D-041).
-- **Autonomous Agent Research Mode (Part C, Option 2)**: For multi-step inquiries, an agent loop autonomously queries tools (`search_document`, `get_section`, `list_clauses`), emits live progress trace events, enforces hard round caps, and validates final synthesis through the quote verifier.
+Contract Analyser is a legal web application designed for objective, grounded contract diligence. Users upload legal agreements (PDF or DOCX) and interrogate them with natural language questions.
 
----
-
-## Evaluation Benchmark & Metrics
-
-We evaluate the system against 12 representative legal questions spanning present terms, absent provisions, 125-page framework agreements, multi-contract diffs, and autonomous agent lookups using `npm run eval`.
-
-| Metric | Target | Measured Result | Status |
-|---|---|---|---|
-| **Quote Fabrication Rate** | $\le 5\%$ (after strict verification) | **0%** (0 unverified of 10 proposed) | **PASS** |
-| **Unverified Shown as Genuine** | **0.0%** (Hard Invariant) | **0.0%** (0 leaked across all suites) | **PASS** |
-| **Present Recall** | $\ge 90\%$ | **100%** (8/8 facts cited with verified quotes) | **PASS** |
-| **Absence Honesty** | **100.0%** | **100%** (3/3 absence claims honest) | **PASS** |
-| **Large-Doc Coverage Mode** | Complete map-reduce on existence queries | **100.0%** complete coverage verified | **PASS** |
-| **Agent Robustness** | Zero uncaught crashes on invalid tool calls | **100.0%** structured error recovery | **PASS** |
-
-*Evaluation run against `openai/gpt-4o` on OpenRouter. Full detailed results logged in [`evals/report.md`](file:///c:/projects/Citation-assignment/evals/report.md).*
+- **Strict Verbatim Quotations**: Every answer is grounded in exact quotes from the contract. Before a quote is displayed, our deterministic backend verification engine checks the quote against the canonical document text. If a quote is altered, paraphrased, or hallucinated, it is marked as `unverified` and never presented as genuine.
+- **Absence Honesty**: When a queried clause, penalty, or condition does not exist in the contract, the system explicitly reports that it was not found rather than inventing plausible legal terms.
+- **Real PDF Canvas Citation Highlighting**: Clicking any verified citation navigates the document viewer to the exact page, auto-scrolls, and highlights the exact words directly on the rendered PDF canvas across line wraps and page boundaries.
+- **Large-Document Scaling & Coverage**: For lengthy contracts (100+ pages), queries route dynamically between full-context, map-reduce, and BM25 retrieval. An explicit coverage indicator tracks sections read, and prompt rules strictly forbid false absence assertions on partial readings.
+- **Multi-Document Comparative Analysis**: Query multiple agreements simultaneously. The model organizes findings side-by-side by topic with document badges, verifying each quote strictly against its source document.
+- **Contract Version Comparison**: Aligns two contract versions, categorizes changes by significance (High, Medium, Low, Cosmetic), extracts financial and legal signals (liability caps, payment terms, notice periods), and provides token-level redline word diffs.
+- **Autonomous Agent Research Mode (Part C, Option 2)**: For complex multi-step inquiries, an agent loop autonomously queries tools (`search_document`, `get_section`, `list_clauses`), displays live progress traces, enforces round caps, and validates final answers through the quote verifier.
 
 ---
 
-## Architecture & Core Invariants
+## Screenshots of the Main Screens
 
-1. **Deterministic Canonical Text & Index Map**:
-   - Each uploaded file is normalized into a canonical text string with exact character offset pointers to pages and rendered PDF text items.
-2. **Never Trust the Model**:
-   - The LLM never dictates start/end offsets or quote verification status. Our code locates quotes, normalizes spacing, checks word boundaries, and verifies source documents.
-3. **Partial Coverage Transparency**:
-   - The system tracks `chunksRead` vs `chunksTotal`. If partial reading occurs, unconditional negative assertions are strictly blocked by prompt guards.
-4. **Resilient System Polish**:
-   - Per-IP rate limiting (60 req/min) and global daily token ceiling (500k tokens) protect resources.
-   - Background stale-job sweeper transitions stuck jobs to `failed` with a 1-click `Retry` option.
-   - SHA-256 content deduplication prevents accidental duplicate processing.
+### 1. Upload & Document Library
+Document management supporting searchable PDFs and DOCX files. Displays file glyphs, page counts, processing statuses, and quality gate notifications for encrypted files or scanned documents lacking a text layer, alongside 1-click sample contract seeding.
+
+![Upload and Document Library](docs/screenshots/01-upload-and-library.png)
 
 ---
 
-## Quickstart & Local Setup
+### 2. Chat with Verified Quotes
+Interactive legal chat where every assertion is backed by programmatic quotes. The evidence margin displays green `Verified` badges, source file tags, and quick actions to copy quotes or inspect them in the document.
+
+![Chat with Verified Quotes](docs/screenshots/02-chat-verified-quotes.png)
+
+---
+
+### 3. Real PDF Canvas Citation Highlighting
+Clicking a quote opens the Reading Desk, auto-scrolls, and applies a marker highlight directly over the rendered text layer on the PDF canvas with a visual pulse sweep.
+
+![Real PDF Canvas Citation Highlighting](docs/screenshots/03-citation-highlighting.png)
+
+---
+
+### 4. Document Version Comparison
+Fixed split workspace comparing contract revisions. Features a substantive headline summary, contract Spine change map, filter chips, sort controls, and side-by-side / inline redline diffing with seal underlines for additions and redline strikethroughs for deletions.
+
+![Document Version Comparison](docs/screenshots/04-contract-comparison.png)
+
+---
+
+## How to Run It Locally
 
 ### Prerequisites
-- Node.js 20+ (v24 recommended)
-- Docker Desktop (for PostgreSQL container)
-- OpenAI or OpenRouter API key
+- **Node.js**: v20 or higher (v24 recommended)
+- **Docker Desktop**: Running locally (for PostgreSQL)
+- **API Key**: [OpenRouter](https://openrouter.ai/) or [OpenAI](https://platform.openai.com/)
 
-### 1. Clone & Install Dependencies
+### 1. Clone & Install
 ```bash
-git clone <repo-url>
-cd contract-analyser
+git clone https://github.com/Aadarshsingh16/CITATION-ADARSH.git
+cd CITATION-ADARSH
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Configure Environment Variables
 Create a `.env` file in the project root:
 ```env
-# Database (PostgreSQL)
+# Database connection (PostgreSQL via Docker on port 5434)
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/contract_analyser # gitleaks:allow
 
-# LLM Provider (OpenRouter or OpenAI)
+# LLM Gateway
 LLM_BASE_URL=https://openrouter.ai/api/v1
-LLM_API_KEY=your-api-key-here
+LLM_API_KEY=your_api_key_here
 LLM_MODEL=openai/gpt-4o
 LLM_FAST_MODEL=google/gemini-2.5-flash
 
@@ -92,70 +93,39 @@ docker compose up -d
 npm run db:migrate
 ```
 
-### 4. Start Development Server
+### 4. Start the Application
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser. Click **"Seed Sample Contracts"** in the UI to instantly load pre-configured legal fixtures (MSA 2024, Mutual NDA, Amendment No 1, and 125-page Enterprise Framework).
+Open [http://localhost:3000](http://localhost:3000) in your browser. Click **"Seed Sample Contracts"** in the top bar to instantly load pre-configured legal test agreements.
 
----
-
-## Verification & Testing
-
-The repository contains 10 comprehensive unit and acceptance test suites (82 automated tests):
-
+### 5. Automated Tests & Evaluation
 ```bash
-# Run all 10 test suites
+# Run all 10 unit and acceptance test suites (89 automated tests)
 npm test
 
-# Run the 12-question evaluation benchmark
+# Run the 12-question legal benchmark evaluation
 npm run eval
 
 # Verify production Next.js build
 npm run build
 ```
 
-### Test Suites Included:
-1. `tests/stream-parser.test.ts`: Incremental `<q>` tag parsing across token boundaries.
-2. `tests/quotes.test.ts`: Normalisation, whitespace tolerance, word boundary checks, wrong document detection.
-3. `tests/phase1-ingestion.test.ts`: PDF/DOCX validation, text extraction, scanned PDF quality gate, 150-page scaling.
-4. `tests/phase2-chat.test.ts`: Persistence, stop mid-stream, quote verification, prompt injection defense.
-5. `tests/phase3-large-docs.test.ts`: Router, map-reduce batching, coverage hedging.
-6. `tests/phase4-citations.test.ts`: Real PDF canvas text span matching, multi-line, cross-page split, fallback.
-7. `tests/phase5-multi-doc.test.ts`: Multi-doc chat sessions, topical side-by-side prompt, document attribution.
-8. `tests/phase6-compare.test.ts`: Clause aligner, financial signal extraction, anti-fabrication validator (D-041).
-9. `tests/phase7-agent.test.ts`: Agent tools, error recovery, live SSE trace, round/call caps.
-10. `tests/phase8-polish.test.ts`: Token bucket rate limiter, daily token ceiling, stale sweeper + retry, SHA-256 duplicate alert.
-
 ---
 
-## Status: Finished vs Not Finished
+## What is Finished and What is Not
 
-### Finished & Verified
-- [x] Complete PDF & DOCX text extraction with text item coordinate preservation (D-035).
-- [x] Scanned PDF quality gate rejecting image-only documents (`no_text_layer`).
-- [x] Chat interface with streamed token rendering, Stop response button, and persistence.
-- [x] Programmatic quote verification engine with whitespace normalisation and multi-page splitting.
-- [x] Interactive PDF.js viewer with real canvas text layer highlighting, occurrence navigator, and canonical fallback.
-- [x] Context router with map-reduce batching and transparent Coverage banner.
-- [x] Multi-document chat with side-by-side comparative topical synthesis.
-- [x] Contract version comparison with deterministic signal extraction and anti-fabrication guard (D-041).
-- [x] Part C (Option 2): Autonomous Agent Research loop with 3 tools, live SSE trace UI, and round caps.
-- [x] Rate limiting (60 req/min), daily token ceiling, stale job sweeper with Retry, and duplicate upload alerts.
-- [x] Evaluation harness (`npm run eval`) with 12/12 passing benchmark questions.
+### What is Finished (100% Verified)
+- [x] **File Validation & Ingestion (Part A)**: PDF and DOCX text extraction with text item coordinate preservation; scanned PDF rejection gate (`no_text_layer`); encrypted file detection.
+- [x] **Chat & Strict Quote Verification (Part A)**: Streaming SSE token responses; stop button preserving partial text; persistent chat history; deterministic normalisation and index mapping; zero trust in model offsets; absence honesty.
+- [x] **Large Document Scaling (Part A)**: Dynamic context routing (`full`, `map_reduce`, `retrieval`); 150-page contract execution; explicit coverage accounting and negative hedging guards.
+- [x] **Real PDF Canvas Highlighting (Part B)**: DOM text layer highlight alignment; multi-line and cross-page quote splitting; occurrence stepper navigation; canonical text fallback.
+- [x] **Multi-Document Analysis (Part B)**: Topical side-by-side synthesis (`[D1]`, `[D2]`); strict per-document quote scoping; cross-document misattribution detection (`wrong_document`).
+- [x] **Contract Version Comparison (Part B)**: Clause alignment; significance classification (High, Medium, Low, Cosmetic); financial signal extraction (caps, fees, dates); token-level redline/seal diffing; anti-fabrication summary guard (D-041).
+- [x] **Autonomous Agent Research Mode (Part C, Option 2)**: Multi-round loop with tools (`search_document`, `get_section`, `list_clauses`); live SSE progress trace UI; round caps (6) and call caps (12); resilient error recovery; strict quote verification on final answers.
+- [x] **Production Polish & Hardening**: Token-bucket per-IP rate limiting (60 req/min); daily token ceiling; stale-job sweeper with 1-click retry; SHA-256 duplicate alert; pre-seeded legal contracts.
 
-### Not Finished / Future Roadmap
-*(Detailed architectural blueprints and implementation specifications are documented in [`docs/FUTURE_ROADMAP.md`](file:///c:/projects/Citation-assignment/docs/FUTURE_ROADMAP.md))*
-- [ ] **OCR for Scanned Documents**: Documents lacking a digital text layer are rejected at the quality gate (`D-021`, `D-022`) rather than processed via optical character recognition.
-- [ ] **Multi-Tenant Authentication**: The system operates in single-tenant mode without user accounts or role-based access control (`D-033`).
-- [ ] **Export to Annotated PDF**: Currently, highlights are rendered interactively on the client PDF.js canvas; exporting modified PDF files with embedded ISO-standard highlight annotation dictionaries is not yet implemented.
-
----
-
-## Detailed Notes & Walkthrough
-- [Architecture & Invariants](file:///c:/projects/Citation-assignment/docs/ARCHITECTURE.md)
-- [Future Technical Roadmap](file:///c:/projects/Citation-assignment/docs/FUTURE_ROADMAP.md)
-- [Submission Reflection Note](file:///c:/projects/Citation-assignment/docs/NOTE.md)
-- [Video Demo Script](file:///c:/projects/Citation-assignment/docs/DEMO_SCRIPT.md)
-- [Submission Checklist & Claims Audit](file:///c:/projects/Citation-assignment/docs/SUBMISSION_CHECKLIST.md)
-- [Production Deployment Guide](file:///c:/projects/Citation-assignment/docs/DEPLOY.md)
+### What is Not Finished (Future Roadmap)
+- [ ] **OCR for Scanned Documents**: Documents lacking an extractable digital text layer are halted at the quality gate (`no_text_layer`) with a clear error notice rather than processed through an optical character recognition pipeline.
+- [ ] **Multi-Tenant Authentication & RBAC**: The application operates in single-tenant mode without user accounts or role-based permission tiers.
+- [ ] **ISO Standard PDF Highlight Export**: Highlights are rendered interactively in the browser on the PDF.js canvas; exporting downloaded PDF files with embedded ISO 32000-1 `/Highlight` annotation dictionaries is a future enhancement.
